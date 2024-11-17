@@ -314,6 +314,7 @@ class DetectionModel(BaseModel):
 
         # Define model 这个ch是输入图片的ch数
         ch = self.yaml["ch"] = self.yaml.get("ch", ch)  # input channels
+        ch = 6
         # nc不匹配 会把yaml中的改为输入的nc
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
