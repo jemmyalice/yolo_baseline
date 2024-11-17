@@ -1,0 +1,5 @@
+train: ./LLVIP_converted/infrared/train/images  # 训练集图片路径
+val: ./LLVIP_converted/infrared/test/images    # 测试集图片路径
+
+nc: 1  # 类别数量
+names: ['person']  # 类别名称

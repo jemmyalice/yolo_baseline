@@ -1,0 +1,9 @@
+# 红外在上，可见在下不能改
+train:
+  - ./LLVIP_converted/infrared/train/images
+  - ./LLVIP_converted/visible/train/images
+val:
+  - ./LLVIP_converted/infrared/test/images
+  - ./LLVIP_converted/visible/test/images
+nc: 1
+names: ["person"]
