@@ -95,32 +95,34 @@ class BaseModel(nn.Module):
 
     def forward(self, x, *args, **kwargs):
         """
-        Perform forward pass of the model for either training or inference.
-
-        If x is a dict, calculates and returns the loss for training. Otherwise, returns predictions for inference.
+            执行模型的前向传递，用于训练或推理。
+            如果x是一个字典，则计算并返回训练的损失。否则，返回用于推理的预测。
 
         Args:
-            x (torch.Tensor | dict): Input tensor for inference, or dict with image tensor and labels for training.
-            *args (Any): Variable length argument list.
-            **kwargs (Any): Arbitrary keyword arguments.
+            x（torch.Tensor|dict）：用于推理的输入张量，或用于训练的带图像张量和标签的dict。
+            *args（Any）：可变长度参数列表。
+            **kwargs（Any）：任意关键字参数。
 
         Returns:
-            (torch.Tensor): Loss if x is a dict (training), or network predictions (inference).
+            (torch.Tensor): 如果x是字典（训练）或网络预测（推理），则进入loss。
         """
         if isinstance(x, dict):  # for cases of training and validating while training.
+            # if "ir" in x and "rgb" in x:
+            #     print("ir_test")
             return self.loss(x, *args, **kwargs)
-        return self.predict(x, *args, **kwargs)
+        return self.predict(x, *args, **kwargs) # 这进行了网络构建
 
     def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
         """
+        通过网络执行前向传递。
         Perform a forward pass through the network.
 
         Args:
-            x (torch.Tensor): The input tensor to the model.
-            profile (bool):  Print the computation time of each layer if True, defaults to False.
-            visualize (bool): Save the feature maps of the model if True, defaults to False.
-            augment (bool): Augment image during prediction, defaults to False.
-            embed (list, optional): A list of feature vectors/embeddings to return.
+            x（torch.Tensor）：模型的输入张量。
+            profile（bool）：如果为True，则打印每一层的计算时间，默认为False。
+            visualize（bool）：如果为True，则保存模型的特征图，默认为False。
+            auction（bool）：在预测过程中增强图像，默认为False。
+            embed（list，可选）：要返回的特征向量/嵌入的列表。
 
         Returns:
             (torch.Tensor): The last output of the model.
@@ -131,25 +133,35 @@ class BaseModel(nn.Module):
 
     def _predict_once(self, x, profile=False, visualize=False, embed=None):
         """
+        通过网络执行前向传递。
+        生成网络结构图的
         Perform a forward pass through the network.
 
         Args:
-            x (torch.Tensor): The input tensor to the model.
-            profile (bool):  Print the computation time of each layer if True, defaults to False.
-            visualize (bool): Save the feature maps of the model if True, defaults to False.
-            embed (list, optional): A list of feature vectors/embeddings to return.
+            x（torch.Tensor）：模型的输入张量。
+            profile（bool）：如果为True，则打印每一层的计算时间，默认为False。
+            visualize（bool）：如果为True，则保存模型的特征图，默认为False。
+            embed（list，可选）：要返回的特征向量/嵌入的列表。
 
         Returns:
             (torch.Tensor): The last output of the model.
         """
         y, dt, embeddings = [], [], []  # outputs
+        # x存储每一个块的输入， y存储每一个块的输出
         for m in self.model:
-            if m.f != -1:  # if not from previous layer
-                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+            if m.f != -1:  # if not from previous layer 这就是需要concat多重输入的部分
+                # 如果 m.f（前一层层索引） 是整数，从 y 中直接取索引为 m.f 的元素，赋值给 x
+                # 为list则 对 m.f 的每个元素 j： 如果 j == -1，保留当前的 x。 如果 j != -1，从 y 中取索引为 j 的元素。
+                if -2 not in m.f:
+                    x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+                elif isinstance(x, list):
+                    x = x
+                else:
+                    x = [x, x]
             if profile:
                 self._profile_one_layer(m, x, dt)
             x = m(x)  # run
-            y.append(x if m.i in self.save else None)  # save output
+            y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
             if embed and m.i in embed:
@@ -266,6 +278,7 @@ class BaseModel(nn.Module):
     def load(self, weights, verbose=True):
         """
         Load the weights into the model.
+        给模型加载权重
 
         Args:
             weights (dict | torch.nn.Module): The pre-trained weights to be loaded.
@@ -283,13 +296,19 @@ class BaseModel(nn.Module):
         Compute loss.
 
         Args:
-            batch (dict): Batch to compute loss on
-            preds (torch.Tensor | List[torch.Tensor]): Predictions.
+            batch (dict): batch 是一个字典，通常包含输入图像和相应的标签（如类别标签、边界框坐标等）。
+                这个字典通常是在训练过程中从 DataLoader 中提取的批数据。
+            preds (torch.Tensor | List[torch.Tensor]): 模型的预测结果，通常在模型的 forward 方法中生成。
+                如果未提供，函数会通过调用模型的 forward 方法自动生成 preds。
         """
+        # 如果当前对象没有定义 criterion（损失函数），则调用 init_criterion 方法初始化它。
         if getattr(self, "criterion", None) is None:
             self.criterion = self.init_criterion()
 
-        preds = self.forward(batch["img"]) if preds is None else preds
+        # 如果是一开始训练，就会用forward生成图片的预测结果
+        preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+
+        # 通过预测结果和batch原标签的区别计算损失函数
         return self.criterion(preds, batch)
 
     def init_criterion(self):
@@ -299,8 +318,10 @@ class BaseModel(nn.Module):
 
 class DetectionModel(BaseModel):
     """YOLOv8 detection model."""
-
-    def __init__(self, cfg="yolov8n.yaml", ch=6, nc=None, verbose=True):  # model, input channels, number of classes
+    '''
+        1. 预加载会把cfg权重覆盖了
+    '''
+    def __init__(self, cfg="yolov11n.yaml", ch=3, nc=None, verbose=True):  # model, input channels, number of classes
         """Initialize the YOLOv8 detection model with the given cfg配置文件 and parameters参数."""
         super().__init__()
         self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  #读取出 cfg 字典
@@ -312,8 +333,10 @@ class DetectionModel(BaseModel):
             )
             self.yaml["backbone"][0][2] = "nn.Identity"
 
+        # print(cfg, self.yaml.get("ch", ch))
         # Define model 这个ch是输入图片的ch数
         ch = self.yaml["ch"] = self.yaml.get("ch", ch)  # input channels
+
         # nc不匹配 会把yaml中的改为输入的nc
         if nc and nc != self.yaml["nc"]:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
@@ -342,8 +365,11 @@ class DetectionModel(BaseModel):
                     return self.forward(x)["one2many"]
                 return self.forward(x)[0] if isinstance(m, (Segment, Pose, OBB)) else self.forward(x)
 
-            # 这里计算seqtoseq模型的步幅。通过对一个全零的张量（形状为 (1, ch, s, s)）进行前向传播，计算输出特征图的尺寸，并据此计算步幅。
+            # 通过对一个全零的张量（形状为 (1, ch, s, s)）进行前向传播，计算输出特征图的尺寸，并据此计算步幅。
             # 步幅是输入尺寸与输出特征图尺寸的比值。结果存储在 m.stride 和 self.stride 中。
+            # x 返回每一层的输入  计算输入尺寸 s 和输出高度之间的比例。
+            # 它们的比值通常表示输入和输出尺寸之间的缩放因子，或者可以理解为模型的步幅。
+            # 这段代码的核心是通过伪输入（零张量）来计算模型在前向传播过程中每一层的空间缩放因子或步幅。
             m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
             self.stride = m.stride
 
@@ -1099,7 +1125,12 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [ch[f]]
         # 如果模块是Concat，那么它会计算输出通道数。
         elif m is Concat:
-            c2 = sum(ch[x] for x in f) # f中会有要连接的层和-1,ch取出对应通道数进行一个通道融合
+            if -2 in f:
+                # print('yes')
+                c2 = ch[-1] * 2
+                c1 = ch[-1]
+            else:
+                c2 = sum(ch[x] for x in f) # f中会有要连接的层和-1,ch取出对应通道数进行一个通道融合
         # 如果模块是以下目标 即最后一层任务，那么它会调整参数列表
         elif m in {Detect, WorldDetect, Segment, Pose, OBB, ImagePoolingAttn, v10Detect}:
             # 列表通常包含了需要融合的层的通道信息。
@@ -1129,7 +1160,9 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         m_.i, m_.f, m_.type = i, f, t  # attach index, 'from' index, type # 信息补充
         if verbose:
             LOGGER.info(f"{i:>3}{str(f):>20}{n_:>3}{m_.np:10.0f}  {t:<45}{str(args):<30}")  # print
-        save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)  # 如果from不为-1 append to savelist
+        # 把f中的-1过滤了，留下拼接的层索引
+        save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1 and x != -2)
+
         layers.append(m_) # layers中加入一个层
         # 确保通道的记录从头开始。这样做有助于保证层与层之间的输出通道信息准确地传递和更新，避免混乱。
         if i == 0:

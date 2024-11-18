@@ -129,6 +129,7 @@ class BaseTrainer:
 
         # Model and Dataset
         # 用于确保模型文件名具有正确的格式，以便于后续的模型加载操作。
+        #self.model 是加载出来的文件路径拼接文件名
         self.model = check_model_file_from_stem(self.args.model)  # 添加后缀，即yolov8n->yolov8n.pt self.args.model是train中加载的model
         self.infusion = False
         with torch_distributed_zero_first(LOCAL_RANK):  # 避免多次自动下载数据集
@@ -240,7 +241,7 @@ class BaseTrainer:
         # Model
         self.run_callbacks("on_pretrain_routine_start")  # 这个在unit中的callbacks中，暂时为空
         ckpt = self.setup_model() # 会把model设置好 从pt读出来就是ckeckpoint的各种模型状态，否则是None
-        self.model = self.model.to(self.device) # model设置好 然后移动到GPU
+        self.model = self.model.to(self.device) # model设置好了 然后移动到GPU
         self.set_model_attributes() # 设定模型的属性
         # 如nc可能代表number of classes（类别数）。
         # names可能是一个包含所有类别名称的列表。
@@ -439,6 +440,7 @@ class BaseTrainer:
                 pbar = enumerate(self.train_loader)
 
             # Update dataloader attributes (optional)
+            # 关闭“马赛克”操作的时机
             if epoch == (self.epochs - self.args.close_mosaic):
                 self._close_dataloader_mosaic()
                 self.train_loader.reset()
@@ -448,9 +450,10 @@ class BaseTrainer:
             if RANK in {-1, 0}:
                 LOGGER.info(self.progress_string())
                 if self.infusion:
-                    pbar = TQDM(enumerate(zip(self.train_ir_loader, self.train_loader)), total=nb)  # 同步加载
+                    pbar = TQDM(enumerate(zip(self.train_ir_loader, self.train_loader)), total=nb, dynamic_ncols=True)  # 同步加载
                 else:
-                    pbar = TQDM(enumerate(self.train_loader), total=nb)  # 初始化进度条
+                    pbar = TQDM(enumerate(self.train_loader), total=nb, dynamic_ncols=True)  # 初始化进度条
+
             self.tloss = None
             for i, batch in pbar: # 等于一个个epoch训练
                 self.run_callbacks("on_train_batch_start")
@@ -468,24 +471,19 @@ class BaseTrainer:
                         if "momentum" in x:
                             x["momentum"] = np.interp(ni, xi, [self.args.warmup_momentum, self.args.momentum])
 
-
                 if self.infusion:
-                    ir_batch, vis_batch = batch  # 解包
-                    # 确保 IR 和 VIS 数据的大小一致s
-                    assert ir_batch["img"].shape==vis_batch[
-                        "img"].shape, "IR and VIS inputs must have the same shape!"
-                    # 在通道维度上叠加
-                    combined_img = torch.cat((ir_batch["img"], vis_batch["img"]), dim=1)  # (B, C*2, H, W)
-
-                    # 更新批次中的图像数据
-                    batch = ir_batch.copy()  # 以 ir_batch 为基础创建新的 batch
-                    batch["img"] = combined_img  # 替换为叠加后的图像数据
+                    # 解压两个 DataLoader 的输出
+                    batch_ir, batch_rgb = batch
+                    # 重新组织为字典
+                    batch = {"ir": batch_ir, "rgb": batch_rgb}
 
                 # Forward
                 with autocast(self.amp): # 开启混合精度训练以加速前向传播。
-                    batch = self.preprocess_batch(batch) # 预处理批数据，如数据增强等。
+                    # batch = self.preprocess_batch(batch) # 预处理批数据，如数据增强等。
+                    batch["ir"] = self.preprocess_batch(batch["ir"])  # 预处理批数据，如数据增强等。
+                    batch["rgb"] = self.preprocess_batch(batch["rgb"])  # 预处理批数据，如数据增强等。
                     # 进行前向传播，返回损失值 self.loss 和损失项 self.loss_items，后者可用于日志记录。
-                    self.loss, self.loss_items = self.model(batch)
+                    self.loss, self.loss_items = self.model(batch)  # 前向传播
                     if RANK != -1:
                         self.loss *= world_size #  多 GPU 损失平均
                     self.tloss = (
@@ -513,13 +511,13 @@ class BaseTrainer:
                             f"{epoch + 1}/{self.epochs}",
                             f"{self._get_memory():.3g}G",  # (GB) GPU memory util
                             *(self.tloss if loss_length > 1 else torch.unsqueeze(self.tloss, 0)),  # losses
-                            batch["cls"].shape[0],  # batch size, i.e. 8
-                            batch["img"].shape[-1],  # imgsz, i.e 640
+                            batch["ir"]["cls"].shape[0],  # batch size, i.e. 8
+                            batch["ir"]["img"].shape[-1],  # imgsz, i.e 640
                         )
                     )
                     self.run_callbacks("on_batch_end")
                     if self.args.plots and ni in self.plot_idx:
-                        self.plot_training_samples(batch, ni) # 逐epoch画图
+                        self.plot_training_samples(batch["ir"], ni) # 逐epoch画图
 
                 self.run_callbacks("on_train_batch_end")
 
@@ -871,12 +869,12 @@ class BaseTrainer:
             LOGGER.info("Closing dataloader mosaic")
             self.train_loader.dataset.close_mosaic(hyp=copy(self.args))
 
-        if self.infusion:
-            if hasattr(self.train_ir_loader.dataset, "mosaic"):
-                self.train_ir_loader.dataset.mosaic = False
-            if hasattr(self.train_ir_loader.dataset, "close_mosaic"):
-                LOGGER.info("Closing dataloader mosaic")
-                self.train_it_loader.dataset.close_mosaic(hyp=copy(self.args))
+        # if self.infusion:
+        #     if hasattr(self.train_ir_loader.dataset, "mosaic"):
+        #         self.train_ir_loader.dataset.mosaic = False
+        #     if hasattr(self.train_ir_loader.dataset, "close_mosaic"):
+        #         LOGGER.info("Closing dataloader mosaic")
+        #         self.train_it_loader.dataset.close_mosaic(hyp=copy(self.args))
 
     def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
         """

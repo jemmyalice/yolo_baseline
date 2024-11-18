@@ -733,7 +733,6 @@ class Model(nn.Module):
         args = {**self.overrides, **custom, **kwargs, "mode": "export"}  # highest priority args on the right
         return Exporter(overrides=args, _callbacks=self.callbacks)(model=self.model)
 
-# 这就是个启动引擎，没用，不用看
     def train(
         self,
         trainer=None,
@@ -795,13 +794,22 @@ class Model(nn.Module):
         if args.get("resume"):
             args["resume"] = self.ckpt_path
 
+        # self.trainer是一detectiontrainer类的实例————这就是全局在用的这个实例
+        # 这一句进行了Detectiontrainer实例的创建
         self.trainer = (trainer or self._smart_load("trainer"))(overrides=args, _callbacks=self.callbacks)
-        if not args.get("resume"):  # manually set model only if not resuming
+
+        # 不是从断点恢复就手动创建模型，这里把train中的地址转换为模型类
+        # 这里的model只是初步模型
+        # get_model从这里进入的DetectionModel
+        if not args.get("resume"):
             self.trainer.model = self.trainer.get_model(weights=self.model if self.ckpt else None, cfg=self.model.yaml)
             self.model = self.trainer.model
 
         self.trainer.hub_session = self.session  # attach optional HUB session
+
+        # 这里就是进入了train函数
         self.trainer.train()
+
         # Update model and cfg after training
         if RANK in {-1, 0}:
             ckpt = self.trainer.best if self.trainer.best.exists() else self.trainer.last
@@ -1063,6 +1071,7 @@ class Model(nn.Module):
     #    name = self.__class__.__name__
     #    raise AttributeError(f"'{name}' object has no attribute '{attr}'. See valid attributes below.\n{self.__doc__}")
 
+    # 这里调用DetectionTrainer
     def _smart_load(self, key: str):
         """
         Loads the appropriate module based on the model task.
@@ -1090,6 +1099,9 @@ class Model(nn.Module):
             - The task_map attribute should be properly initialized with the correct mappings for each task.
         """
         try:
+            print(self.task_map[self.task][key])
+            # 返回<class 'ultralytics.models.yolo.detect.train.DetectionTrainer'>
+            # 从这里进入DetectionTrainer
             return self.task_map[self.task][key]
         except Exception as e:
             name = self.__class__.__name__
