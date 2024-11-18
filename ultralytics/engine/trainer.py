@@ -505,19 +505,34 @@ class BaseTrainer:
                 # 调用回调函数 on_train_batch_end 用于日志记录或图像绘制。
                 if RANK in {-1, 0}:
                     loss_length = self.tloss.shape[0] if len(self.tloss.shape) else 1
-                    pbar.set_description(
-                        ("%11s" * 2 + "%11.4g" * (2 + loss_length))
-                        % (
-                            f"{epoch + 1}/{self.epochs}",
-                            f"{self._get_memory():.3g}G",  # (GB) GPU memory util
-                            *(self.tloss if loss_length > 1 else torch.unsqueeze(self.tloss, 0)),  # losses
-                            batch["ir"]["cls"].shape[0],  # batch size, i.e. 8
-                            batch["ir"]["img"].shape[-1],  # imgsz, i.e 640
+                    if "ir" in batch:
+                        pbar.set_description(
+                            ("%11s" * 2 + "%11.4g" * (2 + loss_length))
+                            % (
+                                f"{epoch + 1}/{self.epochs}",
+                                f"{self._get_memory():.3g}G",  # (GB) GPU memory util
+                                *(self.tloss if loss_length > 1 else torch.unsqueeze(self.tloss, 0)),  # losses
+                                batch["ir"]["cls"].shape[0],  # batch size, i.e. 8
+                                batch["ir"]["img"].shape[-1],  # imgsz, i.e 640
+                            )
                         )
-                    )
+                    else:
+                        pbar.set_description(
+                            ("%11s" * 2 + "%11.4g" * (2 + loss_length))
+                            % (
+                                f"{epoch + 1}/{self.epochs}",
+                                f"{self._get_memory():.3g}G",  # (GB) GPU memory util
+                                *(self.tloss if loss_length > 1 else torch.unsqueeze(self.tloss, 0)),  # losses
+                                batch["cls"].shape[0],  # batch size, i.e. 8
+                                batch["img"].shape[-1],  # imgsz, i.e 640
+                            )
+                        )
                     self.run_callbacks("on_batch_end")
                     if self.args.plots and ni in self.plot_idx:
-                        self.plot_training_samples(batch["ir"], ni) # 逐epoch画图
+                        if "ir" in batch:
+                            self.plot_training_samples(batch["ir"], ni) # 逐epoch画图
+                        else:
+                            self.plot_training_samples(batch, ni)  # 逐epoch画图
 
                 self.run_callbacks("on_train_batch_end")
 
