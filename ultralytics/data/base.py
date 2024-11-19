@@ -147,7 +147,7 @@ class BaseDataset(Dataset):
                     self.labels[i]["keypoints"] = keypoints[j]
             if self.single_cls:
                 self.labels[i]["cls"][:, 0] = 0
-
+    # 据提供的索引从数据集中加载一张图像，随后根据特定参数进行调整大小，处理缓存，并准备图像以用于训练或推断，可能还包括数据增强。
     def load_image(self, i, rect_mode=True):
         """Loads 1 image from dataset index 'i', returns (im, resized hw)."""
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
@@ -283,12 +283,16 @@ class BaseDataset(Dataset):
         self.batch_shapes = np.ceil(np.array(shapes) * self.imgsz / self.stride + self.pad).astype(int) * self.stride
         self.batch = bi  # batch index of image
 
+    # 想配对核心在于index，而index是由dataloader给出来的
     def __getitem__(self, index):
         """Returns transformed label information for given index."""
+        # im_file = self.data[idx]["file_name"]  # 假设文件名在 data 中
+        # print(f"Index: {idx}, im_file: {im_file}")
         return self.transforms(self.get_image_and_label(index))
 
     def get_image_and_label(self, index):
         """Get and return label information from the dataset."""
+        # 深拷贝 self.labels[index]，避免对原始数据的意外修改。
         label = deepcopy(self.labels[index])  # requires deepcopy() https://github.com/ultralytics/ultralytics/pull/1948
         label.pop("shape", None)  # shape is for rect, remove it
         label["img"], label["ori_shape"], label["resized_shape"] = self.load_image(index)

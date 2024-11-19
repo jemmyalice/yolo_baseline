@@ -7,7 +7,7 @@ from copy import copy
 import numpy as np
 import torch.nn as nn
 
-from ultralytics.data import build_dataloader, build_yolo_dataset
+from ultralytics.data import build_dataloader, build_yolo_dataset, build_mutil_dataloader
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.models import yolo
 from ultralytics.nn.tasks import DetectionModel
@@ -59,6 +59,25 @@ class DetectionTrainer(BaseTrainer):
 
         # 返回一个pytroch重构的dataloader对象
         return build_dataloader(dataset, batch_size, workers, shuffle, rank)
+
+    def get_mutil_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train"):
+        """构建并且返回两个 dataloader."""
+        assert mode in {"train", "val"}, f"Mode must be 'train' or 'val', not {mode}."
+        with torch_distributed_zero_first(rank):  # init dataset *.cache only once if DDP
+            if isinstance(dataset_path, list):
+                dataset1 = self.build_dataset(dataset_path[0], mode, batch_size)
+                dataset2 = self.build_dataset(dataset_path[1], mode, batch_size)
+        shuffle = mode == "train"
+        if getattr(dataset1, "rect", False) and shuffle:
+            LOGGER.warning("WARNING ⚠️ 'rect=True' is incompatible with DataLoader shuffle, setting shuffle=False")
+            shuffle = False
+        if getattr(dataset2, "rect", False) and shuffle:
+            LOGGER.warning("WARNING ⚠️ 'rect=True' is incompatible with DataLoader shuffle, setting shuffle=False")
+            shuffle = False
+        workers = self.args.workers if mode == "train" else self.args.workers * 2
+
+        # 返回一个pytroch重构的dataloader对象
+        return build_mutil_dataloader(dataset1, dataset2, batch_size, workers, shuffle, rank)
 
     def preprocess_batch(self, batch):
         """通过缩放和转换为浮点数来预处理一批图像。"""

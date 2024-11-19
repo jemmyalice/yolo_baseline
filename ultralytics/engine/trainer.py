@@ -325,8 +325,9 @@ class BaseTrainer:
         if self.infusion is False:
             self.train_loader = self.get_dataloader(self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train")
         else:
-            self.train_ir_loader = self.get_dataloader(self.trainset[0], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
-            self.train_loader = self.get_dataloader(self.trainset[1], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
+            self.train_loader, self.train_ir_loader = self.get_mutil_dataloader(self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train")
+            # self.train_ir_loader = self.get_dataloader(self.trainset[0], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
+            # self.train_loader = self.get_dataloader(self.trainset[1], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
 
         # 如果当前进程是主进程（RANK为-1或0）
         if RANK in {-1, 0}:
@@ -338,12 +339,15 @@ class BaseTrainer:
                     self.testset, batch_size=batch_size if self.args.task == "obb" else batch_size * 2, rank=-1, mode="val"
                 )
             else:
-                self.test_ir_loader = self.get_dataloader(
-                    self.testset[0], batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
+                self.test_loader, self.test_ir_loader = self.get_mutil_dataloader(
+                    self.testset, batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
                 )
-                self.test_loader = self.get_dataloader(
-                    self.testset[1], batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
-                )
+                # self.test_ir_loader = self.get_dataloader(
+                #     self.testset[0], batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
+                # )
+                # self.test_loader = self.get_dataloader(
+                #     self.testset[1], batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
+                # )
             self.validator = self.get_validator()
             '''
             画图损失参数都在这：
@@ -472,10 +476,26 @@ class BaseTrainer:
                             x["momentum"] = np.interp(ni, xi, [self.args.warmup_momentum, self.args.momentum])
 
                 if self.infusion:
-                    # 解压两个 DataLoader 的输出
+                    # 解包红外图像的数据
+                    # img_ir, bboxes_ir, cls_ir, im_file_ir, ori_shape_ir, resized_shape_ir = \
+                    #     batch_ir['img'], batch_ir['bboxes'], batch_ir['cls'], batch_ir['im_file'], \
+                    #         batch_ir['ori_shape'], batch_ir['resized_shape']
+                    # 解包可见光图像的数据
+                    # img_rgb, bboxes_rgb, cls_rgb, im_file_rgb, ori_shape_rgb, resized_shape_rgb = \
+                    #     batch_rgb['img'], batch_rgb['bboxes'], batch_rgb['cls'], batch_rgb['im_file'], \
+                    #         batch_rgb['ori_shape'], batch_rgb['resized_shape']
+                    # 在这里，你可以将 img_ir 和 img_rgb 以及它们对应的标签（bboxes, cls）一起送入网络进行训练
+                    # 比如，将它们组合成一个输入张量对，或者分别送入两个不同的输入卷积层
+                    # 具体处理方式根据你的模型架构而定
+                    # 输出一些调试信息以检查数据
+                    # print(f"IR image batch: {img_ir.shape}, RGB image batch: {img_rgb.shape}")
+                    # print(f"IR bboxes: {bboxes_ir.shape}, RGB bboxes: {bboxes_rgb.shape}")
+
                     batch_ir, batch_rgb = batch
                     # 重新组织为字典
                     batch = {"ir": batch_ir, "rgb": batch_rgb}
+
+
 
                 # Forward
                 with autocast(self.amp): # 开启混合精度训练以加速前向传播。

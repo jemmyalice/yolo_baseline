@@ -67,13 +67,13 @@ class YOLODataset(BaseDataset):
     # 用于数据集加载速度
     def cache_labels(self, path=Path("./labels.cache")):
         """
-        Cache dataset labels, check images and read shapes.
+        缓存数据集标签、检查图像并读取形状。
 
-        Args:
-            path (Path): Path where to save the cache file. Default is Path('./labels.cache').
+        参数：
+            path (Path)：保存缓存文件的路径。默认为 Path('./labels.cache')。
 
-        Returns:
-            (dict): labels.
+        返回：
+            (dict)：标签。
         """
         x = {"labels": []}
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
@@ -246,6 +246,37 @@ class YOLODataset(BaseDataset):
             new_batch["batch_idx"][i] += i  # add target image index for build_targets()
         new_batch["batch_idx"] = torch.cat(new_batch["batch_idx"], 0)
         return new_batch
+
+class YOLOMultiModalDataset(YOLODataset):
+    """
+    Dataset class for loading object detection and/or segmentation labels in YOLO format.
+
+    Args:
+        data (dict, optional): A dataset YAML dictionary. Defaults to None.
+        task (str): An explicit arg to point current task, Defaults to 'detect'.
+
+    Returns:
+        (torch.utils.data.Dataset): A PyTorch dataset object that can be used for training an object detection model.
+    """
+
+    def __init__(self, *args, data=None, task="detect", **kwargs):
+        """Initializes a dataset object for object detection tasks with optional specifications."""
+        super().__init__(*args, data=data, task=task, **kwargs)
+
+    def update_labels_info(self, label):
+        """Add texts information for multi-modal model training."""
+        labels = super().update_labels_info(label)
+        # NOTE: some categories are concatenated with its synonyms by `/`.
+        labels["texts"] = [v.split("/") for _, v in self.data["names"].items()]
+        return labels
+
+    def build_transforms(self, hyp=None):
+        """Enhances data transformations with optional text augmentation for multi-modal training."""
+        transforms = super().build_transforms(hyp)
+        if self.augment:
+            # NOTE: hard-coded the args for now.
+            transforms.insert(-1, RandomLoadText(max_samples=min(self.data["nc"], 80), padding=True))
+        return transforms
 
 class YOLODatasetf(BaseDataset):
     """
@@ -467,37 +498,6 @@ class YOLODatasetf(BaseDataset):
             new_batch["batch_idx"][i] += i  # add target image index for build_targets()
         new_batch["batch_idx"] = torch.cat(new_batch["batch_idx"], 0)
         return new_batch
-
-class YOLOMultiModalDataset(YOLODataset):
-    """
-    Dataset class for loading object detection and/or segmentation labels in YOLO format.
-
-    Args:
-        data (dict, optional): A dataset YAML dictionary. Defaults to None.
-        task (str): An explicit arg to point current task, Defaults to 'detect'.
-
-    Returns:
-        (torch.utils.data.Dataset): A PyTorch dataset object that can be used for training an object detection model.
-    """
-
-    def __init__(self, *args, data=None, task="detect", **kwargs):
-        """Initializes a dataset object for object detection tasks with optional specifications."""
-        super().__init__(*args, data=data, task=task, **kwargs)
-
-    def update_labels_info(self, label):
-        """Add texts information for multi-modal model training."""
-        labels = super().update_labels_info(label)
-        # NOTE: some categories are concatenated with its synonyms by `/`.
-        labels["texts"] = [v.split("/") for _, v in self.data["names"].items()]
-        return labels
-
-    def build_transforms(self, hyp=None):
-        """Enhances data transformations with optional text augmentation for multi-modal training."""
-        transforms = super().build_transforms(hyp)
-        if self.augment:
-            # NOTE: hard-coded the args for now.
-            transforms.insert(-1, RandomLoadText(max_samples=min(self.data["nc"], 80), padding=True))
-        return transforms
 
 class YOLOMultiModalDatasetf(YOLODatasetf):
     """
