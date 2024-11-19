@@ -152,6 +152,8 @@ class BaseModel(nn.Module):
             if m.f != -1:  # if not from previous layer 这就是需要concat多重输入的部分
                 # 如果 m.f（前一层层索引） 是整数，从 y 中直接取索引为 m.f 的元素，赋值给 x
                 # 为list则 对 m.f 的每个元素 j： 如果 j == -1，保留当前的 x。 如果 j != -1，从 y 中取索引为 j 的元素。
+                # x = y[m.f] if isinstance(m.f, int) else [x if j==-1 else y[j] for j in m.f]
+                # 增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
                 if -2 not in m.f:
                     x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
                 elif isinstance(x, list):
@@ -160,6 +162,8 @@ class BaseModel(nn.Module):
                     x = [x, x]
             if profile:
                 self._profile_one_layer(m, x, dt)
+
+            # 把要输入给网络的内容 输入进去！
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:
@@ -306,7 +310,10 @@ class BaseModel(nn.Module):
             self.criterion = self.init_criterion()
 
         # 如果是一开始训练，就会用forward生成图片的预测结果
-        preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+        if "ir" in batch and "rgb" in batch:
+            preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+        else:
+            preds = self.forward(batch["img"]) if preds is None else preds
 
         # 通过预测结果和batch原标签的区别计算损失函数
         return self.criterion(preds, batch)
@@ -1127,6 +1134,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         elif m is Concat:
             if -2 in f:
                 # print('yes')
+                # c2 = ch[-1] + 1
                 c2 = ch[-1] * 2
                 c1 = ch[-1]
             else:

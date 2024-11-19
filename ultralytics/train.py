@@ -4,10 +4,10 @@ warnings.filterwarnings('ignore')
 
 if __name__=='__main__':
 
-    # model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\yolo11s.yaml')
-    model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\infyolo11.yaml')
-    model.train(data=r'F:\ultralytics-main\data\llvip\data_infusion.yaml',
-    # model.train(data=r'F:\ultralytics-main\data\llvip\data.yaml',
+    model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\yolo11s.yaml')
+    # model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\infyolo11s.yaml')
+    # model.train(data=r'F:\ultralytics-main\data\llvip\data_infusion.yaml',
+    model.train(data=r'F:\ultralytics-main\data\llvip\data.yaml',
         save_period = 1,
         cache=False,
         imgsz=640,

@@ -224,22 +224,19 @@ class Model(nn.Module):
 
     def _new(self, cfg: str, task=None, model=None, verbose=False) -> None:
         """
-        Initializes a new model and infers the task type from the model definitions.
+        初始化新模型并从模型定义中推断任务类型。
+        此方法根据提供的配置文件创建新的模型实例。它加载模型配置，如果未指定则推断任务类型，并使用任务图中的适当类初始化模型。
 
-        This method creates a new model instance based on the provided configuration file. It loads the model
-        configuration, infers the task type if not specified, and initializes the model using the appropriate
-        class from the task map.
+        参数：
+            cfg（str）：YAML 格式的模型配置文件路径。
+            task（str | None）：模型的特定任务。如果为 None，则将从配置中推断。
+            model（torch.nn.Module | None）：自定义模型实例。如果提供，则将使用它而不是创建
+            新的。
+            verbose（bool）：如果为 True，则在加载期间显示模型信息。
 
-        Args:
-            cfg (str): Path to the model configuration file in YAML format.
-            task (str | None): The specific task for the model. If None, it will be inferred from the config.
-            model (torch.nn.Module | None): A custom model instance. If provided, it will be used instead of creating
-                a new one.
-            verbose (bool): If True, displays model information during loading.
-
-        Raises:
-            ValueError: If the configuration file is invalid or the task cannot be inferred.
-            ImportError: If the required dependencies for the specified task are not installed.
+        引发：
+            ValueError：如果配置文件无效或无法推断任务。
+            ImportError：如果未安装指定任务所需的依赖项。
 
         Examples:
             >>> model = Model()
@@ -248,6 +245,7 @@ class Model(nn.Module):
         cfg_dict = yaml_model_load(cfg)
         self.cfg = cfg
         self.task = task or guess_model_task(cfg_dict)
+        # 不知道干啥，反正进入一次DetectionTrainer
         self.model = (model or self._smart_load("model"))(cfg_dict, verbose=verbose and RANK == -1)  # build model
         self.overrides["model"] = self.cfg
         self.overrides["task"] = self.task
@@ -1074,20 +1072,18 @@ class Model(nn.Module):
     # 这里调用DetectionTrainer
     def _smart_load(self, key: str):
         """
-        Loads the appropriate module based on the model task.
+        根据模型任务加载适当的模块。
 
-        This method dynamically selects and returns the correct module (model, trainer, validator, or predictor)
-        based on the current task of the model and the provided key. It uses the task_map attribute to determine
-        the correct module to load.
+        此方法根据模型的当前任务和提供的键动态选择并返回正确的模块（模型、训练器、验证器或预测器）。它使用 task_map 属性来确定要加载的正确模块。
 
-        Args:
-            key (str): The type of module to load. Must be one of 'model', 'trainer', 'validator', or 'predictor'.
+        参数：
+            key (str)：要加载的模块类型。必须是“模型”、“训练器”、“验证器”或“预测器”之一。
 
-        Returns:
-            (object): The loaded module corresponding to the specified key and current task.
+        返回：
+            （对象）：与指定键和当前任务相对应的已加载模块。
 
-        Raises:
-            NotImplementedError: If the specified key is not supported for the current task.
+        引发：
+            NotImplementedError：如果当前任务不支持指定的键。
 
         Examples:
             >>> model = Model(task="detect")
@@ -1095,8 +1091,8 @@ class Model(nn.Module):
             >>> trainer = model._smart_load("trainer")
 
         Notes:
-            - This method is typically used internally by other methods of the Model class.
-            - The task_map attribute should be properly initialized with the correct mappings for each task.
+            - 此方法通常由 Model 类的其他方法内部使用。
+            - 应使用每个任务的正确映射正确初始化 task_map 属性。
         """
         try:
             print(self.task_map[self.task][key])

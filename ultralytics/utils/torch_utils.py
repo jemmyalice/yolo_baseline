@@ -427,6 +427,7 @@ def initialize_weights(model):
         if t is nn.Conv2d:
             pass  # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
         elif t is nn.BatchNorm2d:
+            # 这一部分的赋值不会改变对应的参数，只是在batch学习中的行为有影响
             m.eps = 1e-3
             m.momentum = 0.03
         elif t in {nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU}:

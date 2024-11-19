@@ -176,10 +176,10 @@ default_callbacks = {
 
 def get_default_callbacks():
     """
-    Return a copy of the default_callbacks dictionary with lists as default values.
+    返回 default_callbacks 字典的副本，其中列表为默认值。
 
-    Returns:
-        (defaultdict): A defaultdict with keys from default_callbacks and empty lists as default values.
+    返回：
+        (defaultdict)：一个 defaultdict，其键来自 default_callbacks，空列表为默认值。
     """
     return defaultdict(list, deepcopy(default_callbacks))
 

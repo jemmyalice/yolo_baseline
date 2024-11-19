@@ -479,9 +479,11 @@ class BaseTrainer:
 
                 # Forward
                 with autocast(self.amp): # 开启混合精度训练以加速前向传播。
-                    # batch = self.preprocess_batch(batch) # 预处理批数据，如数据增强等。
-                    batch["ir"] = self.preprocess_batch(batch["ir"])  # 预处理批数据，如数据增强等。
-                    batch["rgb"] = self.preprocess_batch(batch["rgb"])  # 预处理批数据，如数据增强等。
+                    if self.infusion:
+                        batch["ir"] = self.preprocess_batch(batch["ir"])  # 预处理批数据，如数据增强等。
+                        batch["rgb"] = self.preprocess_batch(batch["rgb"])  # 预处理批数据，如数据增强等。
+                    else:
+                        batch = self.preprocess_batch(batch) # 预处理批数据，如数据增强等。
                     # 进行前向传播，返回损失值 self.loss 和损失项 self.loss_items，后者可用于日志记录。
                     self.loss, self.loss_items = self.model(batch)  # 前向传播
                     if RANK != -1:
