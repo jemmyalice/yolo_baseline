@@ -306,7 +306,10 @@ class BaseModel(nn.Module):
             self.criterion = self.init_criterion()
 
         # 如果是一开始训练，就会用forward生成图片的预测结果
-        preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+        if "ir" in batch and "rgb" in batch:
+            preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+        else:
+            preds = self.forward(batch["img"]) if preds is None else preds
 
         # 通过预测结果和batch原标签的区别计算损失函数
         return self.criterion(preds, batch)
