@@ -163,13 +163,18 @@ def get_wb_default_callbacks():
         assert not TESTS_RUNNING  # do not log pytest
         assert SETTINGS["wandb"] is True  # verify integration is enabled
         import wandb as wb
-
+        
         assert hasattr(wb, "__version__")  # verify package is not directory
         _processed_plots = {}
 
-    except (ImportError, AssertionError):
+    except ImportError as e:
+        print(f"ImportError occurred: {e}")
+        wb = None
+    except AssertionError as e:
+        print(f"AssertionError occurred: {e}")
         wb = None
 
+        # 创建 callbacks 字典
     callbacks = (
         {
             "on_pretrain_routine_start": [on_pretrain_routine_start],
@@ -181,12 +186,18 @@ def get_wb_default_callbacks():
         else {}
     )
 
-    if wb == None:
-        print("wb on")
+    # 调试信息
+    if wb is None:
+        print("wb is None: WandB integration is not available.")
     else:
-        print("成功登录")
-    if callbacks == None:
-        print("call error")
+        print("成功登录: WandB integration is successfully logged in.")
+
+    if not callbacks:
+        print("callbacks is empty or None: No callbacks were created.")
+    else:
+        print(f"Callbacks created: {callbacks}")
+
+        # 返回 defaultdict
     return defaultdict(list, deepcopy(callbacks))
 
 callbacks = (
