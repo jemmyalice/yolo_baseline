@@ -111,8 +111,7 @@ class Model(nn.Module):
             >>> model = Model("hub_model", verbose=True)
         """
         super().__init__()
-        self.callbacks = callbacks.get_wb_default_callbacks()
-        # self.callbacks = callbacks.get_default_callbacks()
+        self.callbacks = callbacks.get_default_callbacks()
         self.predictor = None  # reuse predictor
         self.model = None  # model object
         self.trainer = None  # trainer object
