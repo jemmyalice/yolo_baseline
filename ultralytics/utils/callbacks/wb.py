@@ -3,22 +3,15 @@
 from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
 
-# try:
-#     assert not TESTS_RUNNING  # do not log pytest
-#     assert SETTINGS["wandb"] is True  # verify integration is enabled
-#     import wandb as wb
-#
-#     assert hasattr(wb, "__version__")  # verify package is not directory
-#     _processed_plots = {}
 try:
     assert not TESTS_RUNNING  # do not log pytest
-    print("TESTS_RUNNING is False")
+    assert SETTING["wandb"] is True # verify intergration is enabled
     import wandb as wb
+assert hasattr(wb, "__version__")  # verify package is not directory
+_processed_plots = {}
 
-except ImportError as e:
-    print(f"ImportError occurred: {e}")
-except AssertionError as e:
-    print(f"AssertionError occurred: {e}")
+except (ImportError, AssertionError):
+    wb = None
 
 
 
@@ -159,66 +152,8 @@ def on_train_end(trainer):
             )
     wb.run.finish()  # required or run continues on dashboard
 
-<<<<<<< HEAD
-=======
-
-def get_wb_default_callbacks():
-    """
-    返回 default_callbacks 字典的副本，其中列表为默认值。
-
-    返回：
-        (defaultdict)：一个 defaultdict，其键来自 default_callbacks，空列表为默认值。
-    """
-    try:
-        assert not TESTS_RUNNING  # do not log pytest
-        print("TESTS_RUNNING is False")
-
-        assert SETTINGS["wandb"] is True  # verify integration is enabled
-        print("WandB integration is enabled.")
-
-        import wandb as wb
-        assert hasattr(wb, "__version__")  # verify package is not directory
-        print(f"WandB version: {wb.__version__}")
-
-        _processed_plots = {}
-
-    except ImportError as e:
-        print(f"ImportError occurred: {e}")
-        wb = None
-    except AssertionError as e:
-        print(f"AssertionError occurred: {e}")
-        wb = None
-
-        # 创建 callbacks 字典
-    callbacks = (
-        {
-            "on_pretrain_routine_start": on_pretrain_routine_start,
-            "on_train_epoch_end": on_train_epoch_end,
-            "on_fit_epoch_end": on_fit_epoch_end,
-            "on_train_end": on_train_end,
-        }
-        if wb
-        else {}
-    )
-
-    # 调试信息
-    if wb is None:
-        print("wb is None: WandB integration is not available.")
-    else:
-        print("成功登录: WandB integration is successfully logged in.")
-
-    if not callbacks:
-        print("callbacks is empty or None: No callbacks were created.")
-    else:
-        print(f"Callbacks created: {callbacks}")
-
-        # 返回 defaultdict
-    return defaultdict(list, deepcopy(callbacks))
->>>>>>> b8c5b7acfc2756a3592348dff0cc5860979b4cdd
-
 
 callbacks = (
-<<<<<<< HEAD
     {
         "on_pretrain_routine_start": on_pretrain_routine_start,
         "on_train_epoch_end": on_train_epoch_end,
@@ -228,14 +163,3 @@ callbacks = (
     if wb
     else {}
 )
-=======
-        {
-            "on_pretrain_routine_start": on_pretrain_routine_start,
-            "on_train_epoch_end": on_train_epoch_end,
-            "on_fit_epoch_end": on_fit_epoch_end,
-            "on_train_end": on_train_end,
-        }
-        if wb
-        else {}
-    )
->>>>>>> b8c5b7acfc2756a3592348dff0cc5860979b4cdd
