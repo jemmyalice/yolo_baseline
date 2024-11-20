@@ -161,7 +161,6 @@ def get_wb_default_callbacks():
     """
     try:
         assert not TESTS_RUNNING  # do not log pytest
-        assert SETTINGS["wandb"] is True  # verify integration is enabled
         import wandb as wb
         
         assert hasattr(wb, "__version__")  # verify package is not directory
@@ -188,12 +187,12 @@ def get_wb_default_callbacks():
 
     # 调试信息
     if wb is None:
-        print("wb is None: WandB integration is not available.")
+        print("wb 为空: WandB integration is not available.")
     else:
         print("成功登录: WandB integration is successfully logged in.")
 
     if not callbacks:
-        print("callbacks is empty or None: No callbacks were created.")
+        print("callbacks 为空")
     else:
         print(f"Callbacks created: {callbacks}")
 
