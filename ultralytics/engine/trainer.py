@@ -603,6 +603,7 @@ class BaseTrainer:
             if self.stop:
                 break  # must break all DDP ranks
             epoch += 1
+            self.train_loader.sampler.reset()
         # 如果使用主程序， 一般rank都是0 -1
         if RANK in {-1, 0}:
             # Do final val with best.pt
