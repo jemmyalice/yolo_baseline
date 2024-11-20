@@ -5,7 +5,7 @@ from ultralytics.utils.torch_utils import model_info_for_loggers
 
 try:
     assert not TESTS_RUNNING  # do not log pytest
-    assert SETTING["wandb"] is True # verify intergration is enabled
+    assert SETTINGS["wandb"] is True # verify intergration is enabled
     import wandb as wb
     assert hasattr(wb, "__version__")  # verify package is not directory
     _processed_plots = {}
