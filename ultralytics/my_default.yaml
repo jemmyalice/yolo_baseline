@@ -1,0 +1,154 @@
+# Ultralytics YOLO 🚀, AGPL-3.0许可
+# COCO训练的默认训练设置和超参数
+
+task: detect # (str) YOLO任务，例如 detect, segment, classify, pose, obb
+mode: train # (str) YOLO模式，例如 train, val, predict, export, track, benchmark
+
+# 训练设置 -------------------------------------------------------------------------------------------------------
+model: # (str, 可选) 模型文件路径，例如 yolov8n.pt, yolov8n.yaml
+data: # (str, 可选) 数据文件路径，例如 coco8.yaml
+epochs: 1 # (int) 训练的周期数
+time: # (float, 可选) 训练的小时数，如果提供则覆盖epochs
+#表示在训练过程中如果经过指定的 epoch 数（patience），模型性能（如验证集上的损失或精度）没有改善，则停止训练。
+#优化建议：
+# 数据集较小或容易过拟合时，使用较小的值（如 10-20）。
+# 数据集较大时，适当提高 patience（如 50-100）避免过早停止。
+patience: 100 # (int) 在训练早停时等待的周期数，如果没有可观察的改进
+batch: 2 # (int) 每个批次的图像数（-1为自动批次）
+imgsz: 640 # (int | list) 输入图像大小，对于训练和验证模式为int，对于预测和导出模式为list[h,w]
+save: True # (bool) 保存训练检查点和预测结果
+save_period: -1 # (int) 每x个周期保存一次检查点（如果<1则禁用）保存模型
+cache: False # (bool) True/ram, disk or False. 用于数据加载的缓存
+device: 'cpu'# (int | str | list, 可选) 运行设备，例如 cuda device=0 或 device=0,1,2,3 或 device=cpu
+workers: 0 # (int) 用于数据加载的工作线程数（如果是DDP，则为每个RANK）
+project: 'runs/train'# (str, 可选) 项目名称
+name: 'exp'# (str, 可选) 实验名称，结果保存到'project/name'目录
+#现有实验文件夹。如果指定实验名称的文件夹已存在：
+#优化建议：
+# 调试阶段：建议设置为 True，方便重复实验覆盖旧的临时结果。
+# 正式训练：建议设置为 False，确保每次实验都有独立的结果文件夹，避免意外覆盖重要数据。
+exist_ok: False # (bool) 是否覆盖现有的实验
+# pretrained不要动
+pretrained: True # (bool | str) 是否使用预训练的模型（bool）或从中加载权重的模型（str）
+optimizer: auto # (str) 使用的优化器，选项=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
+# Adam系列收敛快，SGD效果好
+verbose: True # (bool) 是否打印详细输出
+seed: 0 # (int) 用于可复现性的随机种子
+deterministic: True # (bool) 是否启用确定性模式
+single_cls: False # (bool) 将多类数据作为单类训练
+rect: False # (bool) 如果mode='train'则进行矩形训练，如果mode='val'则进行矩形验证
+cos_lr: False # (bool) 使用余弦学习率调度器
+close_mosaic: 10 # (int) 在最后的周期中禁用马赛克增强（0为禁用）
+resume: False # (bool) 从最后一个检查点恢复训练
+amp: True # (bool) 自动混合精度（AMP）训练，选项=[True, False]，True运行AMP检查
+#在数据加载器中读取数据时，根据 fraction 进行随机采样，只加载比例内的样本，减少训练规模。
+#适用场景：
+# 调试阶段：设置较小值（如 0.1 或 0.2），快速验证训练代码或调参。
+# 正式训练：设置为 1.0，确保使用完整数据集。
+fraction: 1.0 # (float) 训练的数据集比例（默认为1.0，训练集中的所有图像）
+profile: False # (bool) 在训练期间为记录器分析ONNX和TensorRT的速度
+#作用：
+#冻结模型中的部分权重，适用于迁移学习场景。
+# freeze=None：不冻结任何层，所有权重均可更新。
+# freeze=10：冻结前 10 层权重。
+# freeze=[0, 1, 2]：冻结索引为 0, 1, 2 的特定层。
+#核心机制：
+# 在训练中，冻结的层的权重保持不变，仅更新未冻结部分。
+#适用场景：
+# 迁移学习：冻结 Backbone 层（如前几层特征提取模块），仅微调检测头部分。
+# 优化建议：冻结层数的选择与数据集大小有关，数据较小时冻结更多层，减少过拟合风险。
+freeze: None # (int | list, 可选) 在训练期间冻结前n层，或冻结训练期间的层索引列表
+# 泛化需求强（如目标检测用于实际场景）：建议启用。
+# 硬件性能限制（如 GPU 内存不足）：建议禁用，保持固定分辨率。
+multi_scale: False # (bool) 是否在训练期间使用多尺度
+
+# 分割
+overlap_mask: True # (bool) 在训练期间将对象掩码合并成一个单独的图像掩码（仅限分割训练）
+mask_ratio: 4 # (int) 掩码降采样比例（仅限分割训练）
+# 分类
+dropout: 0.0 # (float) 使用dropout正则化（仅限分类训练）
+
+# 验证/测试设置 ----------------------------------------------------------------------------------------------------
+val: True # (bool) 在训练期间进行验证/测试
+split: val # (str) 用于验证的数据集分割，例如 'val', 'test' 或 'train'
+save_json: False # (bool) 将结果保存到JSON文件
+save_hybrid: False # (bool) 保存标签的混合版本（标签+额外的预测）
+conf: # (float, 可选) 用于检测的对象置信度阈值（默认0.25预测，0.001验证）
+iou: 0.7 # (float) 用于NMS的交并比（IoU）阈值
+max_det: 300 # (int) 每个图像的最大检测数
+half: False # (bool) 使用半精度（FP16）
+dnn: False # (bool) 用于ONNX推理的OpenCV DNN
+plots: True # (bool) 在训练/验证期间保存图表和图像
+
+# 预测设置 -----------------------------------------------------------------------------------------------------
+source: # (str, 可选) 图像或视频的源目录
+vid_stride: 1 # (int) 视频帧率步长
+stream_buffer: False # (bool) 缓冲所有流媒体帧（True）或返回最近的帧（False）
+visualize: False # (bool) 可视化模型特征
+augment: False # (bool) 将图像增强应用到预测源
+agnostic_nms: False # (bool) 类别不可知的NMS
+classes: # (int | list[int], 可选) 按类别过滤结果，例如 classes=0, 或 classes=[0,2,3]
+retina_masks: False # (bool) 使用高分辨率分割掩码
+embed: # (list[int], 可选) 从给定层返回特征向量/嵌入
+
+# 可视化设置 ---------------------------------------------------------------------------------------------------
+show: False # (bool) 如果环境允许，显示预测的图像和视频
+save_frames: False # (bool) 保存预测的单个视频帧
+save_txt: False # (bool) 将结果保存为.txt文件
+save_conf: False # (bool) 将结果保存为置信度分数
+save_crop: False # (bool) 保存带有结果的裁剪图像
+show_labels: True # (bool) 显示预测标签，例如 'person'
+show_conf: True # (bool) 显示预测置信度，例如 '0.99'
+show_boxes: True # (bool) 显示预 测框
+line_width: # (int, 可选) 边界框的线宽。如果为None，则按图像大小缩放。
+
+# 导出设置 ------------------------------------------------------------------------------------------------------
+format: torchscript # (str) 导出的格式，选项在https://docs.ultralytics.com/modes/export/#export-formats
+keras: False # (bool) 使用Keras
+optimize: False # (bool) TorchScript: 优化为手机
+int8: False # (bool) CoreML/TF INT8量化
+dynamic: False # (bool) ONNX/TF/TensorRT: 动态轴
+simplify: True # (bool) ONNX: 使用`onnxslim`简化模型
+opset: # (int, 可选) ONNX: opset版本
+workspace: 4 # (int) TensorRT: 工作空间大小（GB）
+nms: False # (bool) CoreML: 添加NMS
+
+# 超参数 ------------------------------------------------------------------------------------------------------
+lr0: 0.01 # (float) 初始学习率（例如 SGD=1E-2, Adam=1E-3）
+lrf: 0.01 # (float) 最终学习率（lr0 * lrf）
+momentum: 0.937 # (float) SGD动量/Adam beta1
+weight_decay: 0.0005 # (float) 优化器权重衰减 5e-4
+warmup_epochs: 3.0 # (float) 热身周期（小数ok）
+warmup_momentum: 0.8 # (float) 热身初始动量
+warmup_bias_lr: 0.1 # (float) 热身初始偏置lr
+box: 7.5 # (float) 框损失增益
+cls: 0.5 # (float) cls损失增益（与像素比例）
+dfl: 1.5 # (float) dfl损失增益
+pose: 12.0 # (float) 姿态损失增益
+kobj: 1.0 # (float) 关键点obj损失增益
+label_smoothing: 0.0 # (float) 标签平滑（分数）
+nbs: 64 # (int) 名义批次大小
+hsv_h: 0.015 # (float) 图像HSV-色调增强（分数）
+hsv_s: 0.7 # (float) 图像HSV-饱和度增强（分数）
+hsv_v: 0.4 # (float) 图像HSV-值增强（分数）
+degrees: 0.0 # (float) 图像旋转（+/-度）
+translate: 0.1 # (float) 图像平移（+/-分数）
+scale: 0.5 # (float) 图像缩放（+/-增益）
+shear: 0.0 # (float) 图像剪切（+/-度）
+perspective: 0.0 # (float) 图像透视（+/-分数），范围0-0.001
+flipud: 0.0 # (float) 图像上下翻转（概率）
+fliplr: 0.5 # (float) 图像左右翻转（概率）
+bgr: 0.0 # (float) 图像通道BGR（概率）
+mosaic: 1.0 # (float) 图像马赛克（概率）
+mixup: 0.0 # (float) 图像混合（概率）
+copy_paste: 0.0 # (float) 分割复制粘贴（概率）
+copy_paste_mode: "flip" # (str) 执行copy_paste增强的方法（flip, mixup）
+auto_augment: randaugment # (str) 用于分类的自动增强策略（randaugment, autoaugment, augmix）
+erasing: 0.4 # (float) 在分类训练期间随机擦除的概率（0-0.9），0表示无擦除，必须小于1.0。
+crop_fraction: 1.0 # (float) 用于分类的图像裁剪分数（0.1-1），1.0表示无裁剪，必须大于0。
+
+# 自定义config.yaml ---------------------------------------------------------------------------------------------------
+cfg: # (str, 可选) 用于覆盖defaults.yaml
+
+# 跟踪器设置 ------------------------------------------------------------------------------------------------------
+tracker: botsort.yaml # (str) 跟踪器类型，选项=[botsort.yaml, bytetrack.yaml]
