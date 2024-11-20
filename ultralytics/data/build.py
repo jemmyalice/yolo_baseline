@@ -115,20 +115,24 @@ class PairedSampler(Sampler):
         self.shuffle = shuffle
         self.indices = list(range(self.dataset_length))
         self.seed = seed  # 如果传入 seed，就使用固定种子；否则动态生成
-        self._shuffled = False  # 标志是否已经完成打乱
+        self.epoch_shuffle = True  # 用于缓存当前epoch的索引
+
+    def reset(self):
+        """在每个epoch结束时重置索引缓存"""
+        self.epoch_shuffle = True
 
     def _generate_seed(self):
         """生成随机种子，优先使用用户指定的种子；否则动态生成"""
         return self.seed if self.seed is not None else int(time.time() * 1000) % 2 ** 32
 
     def __iter__(self):
-        if self.shuffle and not self._shuffled:
+        if self.shuffle and self.epoch_shuffle:  # 如果当前没有索引，就生成新的
             # Shuffle indices for both datasets at the same time
+            self.epoch_shuffle = False
             seed = self._generate_seed()
             random.seed(seed)  # 设置随机种子
             random.shuffle(self.indices)
-            self._shuffled = True  # 标记为已打乱
-        print("PairedSampler indices:", self.indices)  # 打印返回的索引
+        # print("PairedSampler indices:", self.indices)  # 打印返回的索引
         return iter(self.indices)
 
     def __len__(self):
