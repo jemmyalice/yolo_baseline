@@ -2,6 +2,8 @@
 
 from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
+from collections import defaultdict
+from copy import deepcopy
 
 try:
     assert not TESTS_RUNNING  # do not log pytest
@@ -152,6 +154,18 @@ def on_train_end(trainer):
             )
     wb.run.finish()  # required or run continues on dashboard
 
+def get_wb_default_callbacks():
+    """
+    返回 default_callbacks 字典的副本，其中列表为默认值。
+
+    返回：
+        (defaultdict)：一个 defaultdict，其键来自 default_callbacks，空列表为默认值。
+    """
+    if wb == None:
+        print("wb on")
+    else:
+        print("成功登录")
+    return defaultdict(list, deepcopy(callbacks))
 
 callbacks = (
     {

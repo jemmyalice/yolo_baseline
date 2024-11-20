@@ -132,7 +132,7 @@ class PairedSampler(Sampler):
             seed = self._generate_seed()
             random.seed(seed)  # 设置随机种子
             random.shuffle(self.indices)
-        print("PairedSampler indices:", self.indices)  # 打印返回的索引
+        # print("PairedSampler indices:", self.indices)  # 打印返回的索引
         return iter(self.indices)
 
     def __len__(self):
@@ -216,12 +216,11 @@ def build_mutil_dataloader(dataset1, dataset2, batch, workers, shuffle=True, ran
     nd = torch.cuda.device_count()  # number of CUDA devices
     nw = min(os.cpu_count() // max(nd, 1), workers)  # number of workers
     # 设置数据采样器
-    # Paired sampler for synchronized sampling
     paired_sampler = PairedSampler(dataset1, dataset2, shuffle=shuffle)
+
     # 初始化两个 Sampler，使用相同的种子
     generator = torch.Generator()
     generator.manual_seed(6148914691236517205 + RANK) # 表示当前进程在分布式训练中的编号
-
     loader1 = InfiniteDataLoader(
         dataset=dataset1,
         batch_size=batch,
@@ -233,7 +232,6 @@ def build_mutil_dataloader(dataset1, dataset2, batch, workers, shuffle=True, ran
         worker_init_fn=seed_worker,
         generator=generator,
     )
-
     loader2 = InfiniteDataLoader(
         dataset=dataset2,
         batch_size=batch,

@@ -98,6 +98,50 @@ class DetectionTrainer(BaseTrainer):
             batch["img"] = imgs
         return batch
 
+    def preprocess_multi_batch(self, batch):
+        """
+        对两个数据源（ir 和 rgb）同时进行统一的预处理，确保尺寸一致。
+
+        Args:
+            batch (dict): 包含 'ir' 和 'rgb' 数据的字典。
+
+        Returns:
+            dict: 预处理后的 batch，'ir' 和 'rgb' 数据具有一致的尺寸。
+        """
+        # 处理 ir 图像
+        batch["ir"]["img"] = batch["ir"]["img"].to(self.device, non_blocking=True).float() / 255
+        # 处理 rgb 图像
+        batch["rgb"]["img"] = batch["rgb"]["img"].to(self.device, non_blocking=True).float() / 255
+        if self.args.multi_scale:
+            # 获取 ir 和 rgb 的最大尺寸
+            imgs_ir = batch["ir"]["img"]
+            imgs_rgb = batch["rgb"]["img"]
+            max_dim = max(
+                max(batch["ir"]["img"].shape[2:]),  # ir 最大尺寸
+                max(batch["rgb"]["img"].shape[2:])  # rgb 最大尺寸
+            )
+            # 计算目标尺寸（统一为 stride 的倍数）
+            sz = (
+                    random.randrange(int(self.args.imgsz * 0.5), int(self.args.imgsz * 1.5 + self.stride))
+                    // self.stride
+                    * self.stride
+            )  # size
+            # 计算缩放因子
+            sf = sz / max_dim  # scale factor
+            if sf!=1:
+                # 计算新的尺寸
+                ns = [
+                    math.ceil(x * sf / self.stride) * self.stride for x in imgs_ir.shape[2:]
+                ]  # new shape (stretched to gs-multiple)
+
+                # 对 ir 和 rgb 同步插值缩放
+                imgs_ir = nn.functional.interpolate(imgs_ir, size=ns, mode="bilinear", align_corners=False)
+                imgs_rgb = nn.functional.interpolate(imgs_rgb, size=ns, mode="bilinear", align_corners=False)
+            batch["ir"]["img"] = imgs_ir
+            batch["rgb"]["img"] = imgs_rgb
+        return batch["ir"], batch["rgb"]
+
+
     def set_model_attributes(self):
         """Nl = de_parallel(self.model).model[-1].nl  # number of detection layers (to scale hyps)."""
         # self.args.box *= 3 / nl  # scale to layers
