@@ -132,7 +132,7 @@ class PairedSampler(Sampler):
             seed = self._generate_seed()
             random.seed(seed)  # 设置随机种子
             random.shuffle(self.indices)
-        # print("PairedSampler indices:", self.indices)  # 打印返回的索引
+        print("PairedSampler indices:", self.indices)  # 打印返回的索引
         return iter(self.indices)
 
     def __len__(self):
