@@ -22,6 +22,7 @@ except ImportError as e:
 except AssertionError as e:
     print(f"AssertionError occurred: {e}")
 
+
 def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"):
     """
     Create and log a custom metric visualization to wandb.plot.pr_curve.
@@ -158,6 +159,7 @@ def on_train_end(trainer):
             )
     wb.run.finish()  # required or run continues on dashboard
 
+
 def get_wb_default_callbacks():
     """
     返回 default_callbacks 字典的副本，其中列表为默认值。
@@ -167,9 +169,15 @@ def get_wb_default_callbacks():
     """
     try:
         assert not TESTS_RUNNING  # do not log pytest
+        print("TESTS_RUNNING is False")
+
+        assert SETTINGS["wandb"] is True  # verify integration is enabled
+        print("WandB integration is enabled.")
+
         import wandb as wb
-        
         assert hasattr(wb, "__version__")  # verify package is not directory
+        print(f"WandB version: {wb.__version__}")
+
         _processed_plots = {}
 
     except ImportError as e:
@@ -182,10 +190,10 @@ def get_wb_default_callbacks():
         # 创建 callbacks 字典
     callbacks = (
         {
-            "on_pretrain_routine_start": [on_pretrain_routine_start],
-            "on_train_epoch_end": [on_train_epoch_end],
-            "on_fit_epoch_end": [on_fit_epoch_end],
-            "on_train_end": [on_train_end],
+            "on_pretrain_routine_start": on_pretrain_routine_start,
+            "on_train_epoch_end": on_train_epoch_end,
+            "on_fit_epoch_end": on_fit_epoch_end,
+            "on_train_end": on_train_end,
         }
         if wb
         else {}
@@ -193,24 +201,25 @@ def get_wb_default_callbacks():
 
     # 调试信息
     if wb is None:
-        print("wb 为空: WandB integration is not available.")
+        print("wb is None: WandB integration is not available.")
     else:
         print("成功登录: WandB integration is successfully logged in.")
 
     if not callbacks:
-        print("callbacks 为空")
+        print("callbacks is empty or None: No callbacks were created.")
     else:
         print(f"Callbacks created: {callbacks}")
 
         # 返回 defaultdict
     return defaultdict(list, deepcopy(callbacks))
 
+
 callbacks = (
         {
-            "on_pretrain_routine_start": [on_pretrain_routine_start],
-            "on_train_epoch_end": [on_train_epoch_end],
-            "on_fit_epoch_end": [on_fit_epoch_end],
-            "on_train_end": [on_train_end],
+            "on_pretrain_routine_start": on_pretrain_routine_start,
+            "on_train_epoch_end": on_train_epoch_end,
+            "on_fit_epoch_end": on_fit_epoch_end,
+            "on_train_end": on_train_end,
         }
         if wb
         else {}
