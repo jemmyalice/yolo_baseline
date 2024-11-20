@@ -7,8 +7,8 @@ try:
     assert not TESTS_RUNNING  # do not log pytest
     assert SETTING["wandb"] is True # verify intergration is enabled
     import wandb as wb
-assert hasattr(wb, "__version__")  # verify package is not directory
-_processed_plots = {}
+    assert hasattr(wb, "__version__")  # verify package is not directory
+    _processed_plots = {}
 
 except (ImportError, AssertionError):
     wb = None
