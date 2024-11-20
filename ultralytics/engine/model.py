@@ -111,12 +111,7 @@ class Model(nn.Module):
             >>> model = Model("hub_model", verbose=True)
         """
         super().__init__()
-<<<<<<< HEAD
 
-        # 上面这里是使用了wandb调用的那种，下面没用
-        # self.callbacks = callbacks.get_wb_default_callbacks()
-=======
->>>>>>> b8c5b7acfc2756a3592348dff0cc5860979b4cdd
         self.callbacks = callbacks.get_default_callbacks()
         self.predictor = None  # reuse predictor
         self.model = None  # model object
