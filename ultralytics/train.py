@@ -1,14 +1,17 @@
 import warnings
 from idlelib.configdialog import tracers
-
 from PIL.ImageFont import truetype
-
+import wandb
 from ultralytics import YOLO
 warnings.filterwarnings('ignore')
 
 if __name__=='__main__':
+
     # model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\yolo11s.yaml')
     model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\infyolo11s.yaml')
+    wandb.login(key='4e00c637b782ec1feeb62c96a9980a33f4f7c262')
+    wandb.init(project='my_named_yolo11', name='Result_11.20', resume=True)
+
     model.train(data=r'F:\ultralytics-main\data\llvip\data_infusion.yaml',
     # model.train(data=r'F:\ultralytics-main\data\llvip\data.yaml',
         save_period = 20,
@@ -28,3 +31,4 @@ if __name__=='__main__':
         project='runs/train',
         name='exp',
     )
+    wandb.finsh()

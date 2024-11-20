@@ -106,6 +106,7 @@ class BaseModel(nn.Module):
         Returns:
             (torch.Tensor): 如果x是字典（训练）或网络预测（推理），则进入loss。
         """
+        # 传入的x是一个batch字典，其中batch["ir"] batch["rgb"]又为一个字典，其中有取文件的信息
         if isinstance(x, dict):  # for cases of training and validating while training.
             # if "ir" in x and "rgb" in x:
             #     print("ir_test")
@@ -156,9 +157,12 @@ class BaseModel(nn.Module):
                 # 增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
                 if -2 not in m.f:
                     x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+                # ultralytics/nn/tasks.py:317训练时候要走这里，这里对于两个输入进行特殊处理
+                # 因为一开始进来的时候传的是list所以可以这样
                 elif isinstance(x, list):
                     x = x
                 else:
+                    # 在yolo模型定义时第一次建造网络时传入的是一个tensor，使用infusion
                     x = [x, x]
             if profile:
                 self._profile_one_layer(m, x, dt)

@@ -2,8 +2,6 @@
 
 from ultralytics.utils import SETTINGS, TESTS_RUNNING
 from ultralytics.utils.torch_utils import model_info_for_loggers
-from collections import defaultdict
-from copy import deepcopy
 
 try:
     assert not TESTS_RUNNING  # do not log pytest
@@ -15,6 +13,7 @@ try:
 
 except (ImportError, AssertionError):
     wb = None
+
 
 def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall", y_title="Precision"):
     """
@@ -43,6 +42,7 @@ def _custom_table(x, y, classes, title="Precision Recall Curve", x_title="Recall
     return wb.plot_table(
         "wandb/area-under-curve/v0", wb.Table(dataframe=df), fields=fields, string_fields=string_fields
     )
+
 
 def _plot_curve(
     x,
@@ -152,50 +152,14 @@ def on_train_end(trainer):
             )
     wb.run.finish()  # required or run continues on dashboard
 
-def get_wb_default_callbacks():
-    """
-    返回 default_callbacks 字典的副本，其中列表为默认值。
-
-    返回：
-        (defaultdict)：一个 defaultdict，其键来自 default_callbacks，空列表为默认值。
-    """
-    try:
-        assert not TESTS_RUNNING  # do not log pytest
-        assert SETTINGS["wandb"] is True  # verify integration is enabled
-        import wandb as wb
-
-        assert hasattr(wb, "__version__")  # verify package is not directory
-        _processed_plots = {}
-
-    except (ImportError, AssertionError):
-        wb = None
-
-    callbacks = (
-        {
-            "on_pretrain_routine_start": [on_pretrain_routine_start],
-            "on_train_epoch_end": [on_train_epoch_end],
-            "on_fit_epoch_end": [on_fit_epoch_end],
-            "on_train_end": [on_train_end],
-        }
-        if wb
-        else {}
-    )
-
-    if wb == None:
-        print("wb on")
-    else:
-        print("成功登录")
-    if callbacks == None:
-        print("call error")
-    return defaultdict(list, deepcopy(callbacks))
 
 callbacks = (
-        {
-            "on_pretrain_routine_start": [on_pretrain_routine_start],
-            "on_train_epoch_end": [on_train_epoch_end],
-            "on_fit_epoch_end": [on_fit_epoch_end],
-            "on_train_end": [on_train_end],
-        }
-        if wb
-        else {}
-    )
+    {
+        "on_pretrain_routine_start": on_pretrain_routine_start,
+        "on_train_epoch_end": on_train_epoch_end,
+        "on_fit_epoch_end": on_fit_epoch_end,
+        "on_train_end": on_train_end,
+    }
+    if wb
+    else {}
+)
