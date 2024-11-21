@@ -325,7 +325,7 @@ class BaseTrainer:
         if self.infusion is False:
             self.train_loader = self.get_dataloader(self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train")
         else:
-            self.train_ir_loader, self.train_loader = self.get_mutil_dataloader(self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train")
+            self.train_loader, self.train_ir_loader= self.get_mutil_dataloader(self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train")
             # self.train_ir_loader = self.get_dataloader(self.trainset[0], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
             # self.train_loader = self.get_dataloader(self.trainset[1], batch_size=batch_size, rank=LOCAL_RANK, mode="train")
 
@@ -339,7 +339,7 @@ class BaseTrainer:
                     self.testset, batch_size=batch_size if self.args.task == "obb" else batch_size * 2, rank=-1, mode="val"
                 )
             else:
-                self.test_ir_loader, self.test_loader = self.get_mutil_dataloader(
+                self.test_loader, self.test_ir_loader = self.get_mutil_dataloader(
                     self.testset, batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
                 )
                 # self.test_ir_loader = self.get_dataloader(
@@ -348,7 +348,11 @@ class BaseTrainer:
                 # self.test_loader = self.get_dataloader(
                 #     self.testset[1], batch_size=batch_size if self.args.task=="obb" else batch_size * 2, rank=-1, mode="val"
                 # )
-            self.validator = self.get_validator()
+            if self.infusion is False:
+                self.validator = self.get_validator()
+            else:
+                self.validator = self.get_mutil_validator()
+
             '''
             画图损失参数都在这：
                 validator预测的所有评估的参数等等都在这里
@@ -439,7 +443,7 @@ class BaseTrainer:
             if RANK != -1:
                 self.train_loader.sampler.set_epoch(epoch)
             if self.infusion:
-                pbar = enumerate(zip(self.train_ir_loader, self.train_loader))  # 同步加载
+                pbar = enumerate(zip(self.train_loader, self.train_ir_loader))  # 同步加载
             else:
                 pbar = enumerate(self.train_loader)
 
@@ -454,7 +458,7 @@ class BaseTrainer:
             if RANK in {-1, 0}:
                 LOGGER.info(self.progress_string())
                 if self.infusion:
-                    pbar = TQDM(enumerate(zip(self.train_ir_loader, self.train_loader)), total=nb, dynamic_ncols=True)  # 同步加载
+                    pbar = TQDM(enumerate(zip(self.train_loader, self.train_ir_loader)), total=nb, dynamic_ncols=True)  # 同步加载
                 else:
                     pbar = TQDM(enumerate(self.train_loader), total=nb, dynamic_ncols=True)  # 初始化进度条
 
@@ -462,10 +466,9 @@ class BaseTrainer:
             for i, batch in pbar: # 等于一个个epoch训练
                 self.run_callbacks("on_train_batch_start")
                 if self.infusion:
-                    batch_ir, batch_rgb = batch
-                    # batch_ir.reset()
+                    batch_rgb, batch_ir = batch
                     # 重新组织为字典
-                    batch = {"ir": batch_ir, "rgb": batch_rgb}
+                    batch = {"rgb": batch_rgb, "ir": batch_ir}
 
 
                 # Warmup 学习率与动量
@@ -486,7 +489,7 @@ class BaseTrainer:
                 with autocast(self.amp): # 开启混合精度训练以加速前向传播。
                     if self.infusion:
                         # 使用 preprocess_multi_batch 处理两个数据源
-                        batch["ir"], batch["rgb"] = self.preprocess_multi_batch(batch)
+                        batch["rgb"], batch["ir"]= self.preprocess_multi_batch(batch)
                     else:
                         batch = self.preprocess_batch(batch) # 预处理批数据，如数据增强等。
                     # 进行前向传播，返回损失值 self.loss 和损失项 self.loss_items，后者可用于日志记录。
@@ -895,12 +898,12 @@ class BaseTrainer:
             LOGGER.info("Closing dataloader mosaic")
             self.train_loader.dataset.close_mosaic(hyp=copy(self.args))
 
-        # if self.infusion:
-        #     if hasattr(self.train_ir_loader.dataset, "mosaic"):
-        #         self.train_ir_loader.dataset.mosaic = False
-        #     if hasattr(self.train_ir_loader.dataset, "close_mosaic"):
-        #         LOGGER.info("Closing dataloader mosaic")
-        #         self.train_it_loader.dataset.close_mosaic(hyp=copy(self.args))
+        if hasattr(self.train_ir_loader.dataset, "mosaic"):
+            self.train_ir_loader.dataset.mosaic = False
+        if hasattr(self.train_ir_loader.dataset, "close_mosaic"):
+            LOGGER.info("Closing dataloader mosaic")
+            self.train_ir_loader.dataset.close_mosaic(hyp=copy(self.args))
+
 
     def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
         """

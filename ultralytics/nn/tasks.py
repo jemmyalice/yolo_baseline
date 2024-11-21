@@ -108,10 +108,8 @@ class BaseModel(nn.Module):
         """
         # 传入的x是一个batch字典，其中batch["ir"] batch["rgb"]又为一个字典，其中有取文件的信息
         if isinstance(x, dict):  # for cases of training and validating while training.
-            # if "ir" in x and "rgb" in x:
-            #     print("ir_test")
             return self.loss(x, *args, **kwargs)
-        return self.predict(x, *args, **kwargs) # 这进行了网络构建
+        return self.predict(x, *args, **kwargs) # 这进行了网络构建，预测也会进这个
 
     def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
         """
@@ -147,6 +145,7 @@ class BaseModel(nn.Module):
         Returns:
             (torch.Tensor): The last output of the model.
         """
+        # train是时候传进来的第一维为rgb，第二维为ir
         y, dt, embeddings = [], [], []  # outputs
         # x存储每一个块的输入， y存储每一个块的输出
         for m in self.model:
@@ -168,7 +167,15 @@ class BaseModel(nn.Module):
                 self._profile_one_layer(m, x, dt)
 
             # 把要输入给网络的内容 输入进去！
-            x = m(x)  # run
+            # concat应该是把两个输入x作为一个整体list直接输入然后forward中连接
+            # 然而我需要的是两个输入到m中
+            if m.i != 0:
+                x = m(x)  # run
+            elif isinstance(x, list):
+                x = m(x[0], x[1]) # 顺序别乱，永远rgb在前，ir在后
+            else:
+                x = m(x, x)
+
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:
                 feature_visualization(x, m.type, m.i, save_dir=visualize)
@@ -313,9 +320,9 @@ class BaseModel(nn.Module):
         if getattr(self, "criterion", None) is None:
             self.criterion = self.init_criterion()
 
-        # 如果是一开始训练，就会用forward生成图片的预测结果
+        # 如果是一个epoch开始训练，就会用forward生成图片的预测结果
         if "ir" in batch and "rgb" in batch:
-            preds = self.forward([batch["ir"]["img"], batch["rgb"]["img"]]) if preds is None else preds
+            preds = self.forward([batch["rgb"]["img"], batch["ir"]["img"]]) if preds is None else preds
         else:
             preds = self.forward(batch["img"]) if preds is None else preds
 
@@ -382,6 +389,7 @@ class DetectionModel(BaseModel):
             # 它们的比值通常表示输入和输出尺寸之间的缩放因子，或者可以理解为模型的步幅。
             # 这段代码的核心是通过伪输入（零张量）来计算模型在前向传播过程中每一层的空间缩放因子或步幅。
             m.stride = torch.tensor([s / x.shape[-2] for x in _forward(torch.zeros(1, ch, s, s))])  # forward
+            # 上面这一句就是forward对网络进行初始化
             self.stride = m.stride
 
             # 专门用于初始化 Detect 类或其子类中的偏置（bias）。它特别关注检测任务中的偏置初始化，而不是整个模型的权重。
@@ -1073,8 +1081,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             PSA,
             SCDown,
             C2fCIB,
-            AKConv,
-            C3k2_AKConv
+            # new
+            AKConv, C3k2_AKConv, ACDF, eca_layer
         }:
             # c1是输入通道深度（数），c2是输出通道深度
             # ch[f]中f一般-1，取出的是上一层网络最后的那个输出通道数，args[0]是模型输出的通道数
@@ -1089,8 +1097,14 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                     max(round(min(args[2], max_channels // 2 // 32)) * width, 1) if args[2] > 1 else args[2]
                 )  # num heads
 
+            #这个是普遍的输入到网络中的参数，后面有特殊进行一个修改
             #将c1和c2（输入输出通道数）放入args列表中，并保持其他参数不变。
             args = [c1, c2, *args[1:]]
+            if m in {eca_layer}:
+                ch[f] = ch[f] * 2
+                c1 = ch[f] # ACDF后要把out改为真的out，输入的out是真的out的一半
+                c2 = c1
+                args = [c1]
 
             # 如果模块是这里面的部分    它会在参数列表中插入重复的次数n
             if m in {
@@ -1165,7 +1179,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c2 = ch[f[-1]]
         else:
             c2 = ch[f]
-
+        # args 输出的就是传入给网络层的参数
         m_ = nn.Sequential(*(m(*args) for _ in range(n))) if n > 1 else m(*args)  # module #网络实例化
         t = str(m)[8:-2].replace("__main__.", "")  # module type #t 代表的是当前模块 m 的类名Conv，去除了不必要的部分。
         m_.np = sum(x.numel() for x in m_.parameters())  # number params # 网络参数计算

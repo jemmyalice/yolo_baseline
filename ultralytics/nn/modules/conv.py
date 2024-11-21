@@ -71,17 +71,17 @@ class Conv2(Conv):
         super().__init__(c1, c2, k, s, p, g=g, d=d, act=act)
         self.cv2 = nn.Conv2d(c1, c2, 1, s, autopad(1, p, d), groups=g, dilation=d, bias=False)  # add 1x1 conv
 
-# 两条并行路，没有分通道之类的
+    # 两条并行路，没有分通道之类的
     def forward(self, x):
         """Apply convolution, batch normalization and activation to input tensor."""
         return self.act(self.bn(self.conv(x) + self.cv2(x)))
 
-# 下面两个也是为了训练和推理分开
+    # 下面两个也是为了训练和推理分开
     def forward_fuse(self, x):
         """Apply fused convolution, batch normalization and activation to input tensor."""
         return self.act(self.bn(self.conv(x)))
 
-# 把训练好的1*1卷积放到3*3卷积中完成融合，提高推理速度
+    # 把训练好的1*1卷积放到3*3卷积中完成融合，提高推理速度
     def fuse_convs(self):
         """Fuse parallel convolutions."""
         w = torch.zeros_like(self.conv.weight.data)

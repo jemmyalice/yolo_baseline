@@ -65,7 +65,7 @@ class DetectionTrainer(BaseTrainer):
         assert mode in {"train", "val"}, f"Mode must be 'train' or 'val', not {mode}."
         with torch_distributed_zero_first(rank):  # init dataset *.cache only once if DDP
             if isinstance(dataset_path, list):
-                dataset1 = self.build_dataset(dataset_path[0], mode, batch_size)
+                dataset1 = self.build_dataset(dataset_path[0], mode, batch_size) # 0是上面的为vis
                 dataset2 = self.build_dataset(dataset_path[1], mode, batch_size)
         shuffle = mode == "train"
         if getattr(dataset1, "rect", False) and shuffle:
@@ -108,17 +108,18 @@ class DetectionTrainer(BaseTrainer):
         Returns:
             dict: 预处理后的 batch，'ir' 和 'rgb' 数据具有一致的尺寸。
         """
-        # 处理 ir 图像
-        batch["ir"]["img"] = batch["ir"]["img"].to(self.device, non_blocking=True).float() / 255
         # 处理 rgb 图像
         batch["rgb"]["img"] = batch["rgb"]["img"].to(self.device, non_blocking=True).float() / 255
+        # 处理 ir 图像
+        batch["ir"]["img"] = batch["ir"]["img"].to(self.device, non_blocking=True).float() / 255
+
         if self.args.multi_scale:
             # 获取 ir 和 rgb 的最大尺寸
-            imgs_ir = batch["ir"]["img"]
             imgs_rgb = batch["rgb"]["img"]
+            imgs_ir = batch["ir"]["img"]
             max_dim = max(
-                max(batch["ir"]["img"].shape[2:]),  # ir 最大尺寸
-                max(batch["rgb"]["img"].shape[2:])  # rgb 最大尺寸
+                max(batch["rgb"]["img"].shape[2:]),  # rgb 最大尺寸
+                max(batch["ir"]["img"].shape[2:])  # ir 最大尺寸
             )
             # 计算目标尺寸（统一为 stride 的倍数）
             sz = (
@@ -135,12 +136,11 @@ class DetectionTrainer(BaseTrainer):
                 ]  # new shape (stretched to gs-multiple)
 
                 # 对 ir 和 rgb 同步插值缩放
-                imgs_ir = nn.functional.interpolate(imgs_ir, size=ns, mode="bilinear", align_corners=False)
                 imgs_rgb = nn.functional.interpolate(imgs_rgb, size=ns, mode="bilinear", align_corners=False)
-            batch["ir"]["img"] = imgs_ir
+                imgs_ir = nn.functional.interpolate(imgs_ir, size=ns, mode="bilinear", align_corners=False)
             batch["rgb"]["img"] = imgs_rgb
-        return batch["ir"], batch["rgb"]
-
+            batch["ir"]["img"] = imgs_ir
+        return batch["rgb"], batch["ir"]
 
     def set_model_attributes(self):
         """Nl = de_parallel(self.model).model[-1].nl  # number of detection layers (to scale hyps)."""
@@ -170,6 +170,14 @@ class DetectionTrainer(BaseTrainer):
         self.loss_names = "box_loss", "cls_loss", "dfl_loss" # 三个损失的名称
         return yolo.detect.DetectionValidator(
             self.test_loader, save_dir=self.save_dir, args=copy(self.args), _callbacks=self.callbacks
+        )
+
+    def get_mutil_validator(self):
+        """返回 a DetectionValidator for YOLO model validation."""
+        self.loss_names = "box_loss", "cls_loss", "dfl_loss" # 三个损失的名称
+        return yolo.detect.DetectionValidator(
+            [self.test_loader, self.test_ir_loader], save_dir=self.save_dir,
+            args=copy(self.args), _callbacks=self.callbacks, infusion = True
         )
 
     def label_loss_items(self, loss_items=None, prefix="train"):

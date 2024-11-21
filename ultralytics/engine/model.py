@@ -112,6 +112,8 @@ class Model(nn.Module):
         """
         super().__init__()
 
+        # 上面这里是使用了wandb调用的那种，下面没用
+        # self.callbacks = callbacks.get_wb_default_callbacks()
         self.callbacks = callbacks.get_default_callbacks()
         self.predictor = None  # reuse predictor
         self.model = None  # model object

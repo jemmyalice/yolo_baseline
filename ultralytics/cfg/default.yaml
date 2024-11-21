@@ -22,7 +22,7 @@ name: 'exp'# (str, 可选) 实验名称，结果保存到'project/name'目录
 exist_ok: False # (bool) 是否覆盖现有的实验
 pretrained: True # (bool | str) 是否使用预训练的模型（bool）或从中加载权重的模型（str）
 optimizer: auto # (str) 使用的优化器，选项=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
-# Adam系列收敛快，SGD效果好
+# AdamW收敛快，SGD效果好
 verbose: True # (bool) 是否打印详细输出
 seed: 0 # (int) 用于可复现性的随机种子
 deterministic: True # (bool) 是否启用确定性模式

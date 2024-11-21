@@ -488,17 +488,16 @@ class AutoBackend(nn.Module):
 
     def forward(self, im, augment=False, visualize=False, embed=None):
         """
-        Runs inference on the YOLOv8 MultiBackend model.
+        在YOLOv8 MultiBackend模型上运行推理。
+        Args：
+            im（torch.Tensor）：用于进行推理的图像张量。
+            augment（bool）：是否在推理过程中执行数据增强，默认为False
+            visualize（bool）：是否可视化输出预测，默认为False
+            embed（list，可选）：要返回的特征向量/嵌入的列表。
 
-        Args:
-            im (torch.Tensor): The image tensor to perform inference on.
-            augment (bool): whether to perform data augmentation during inference, defaults to False
-            visualize (bool): whether to visualize the output predictions, defaults to False
-            embed (list, optional): A list of feature vectors/embeddings to return.
-
-        Returns:
-            (tuple): Tuple containing the raw output tensor, and processed output for visualization (if visualize=True)
-        """
+        returns：
+        （tuple）：包含原始输出张量和可视化处理输出的tuple（如果visualize=True）
+               """
         b, ch, h, w = im.shape  # batch, channel, height, width
         if self.fp16 and im.dtype != torch.float16:
             im = im.half()  # to FP16

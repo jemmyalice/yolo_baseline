@@ -66,7 +66,7 @@ class BaseValidator:
         callbacks (dict): Dictionary to store various callback functions.
     """
 
-    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None, _callbacks=None):
+    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None, _callbacks=None, infusion=False):
         """
         Initializes a BaseValidator instance.
 
@@ -78,7 +78,12 @@ class BaseValidator:
             _callbacks (dict): Dictionary to store various callback functions.
         """
         self.args = get_cfg(overrides=args)
-        self.dataloader = dataloader
+        self.infusion = infusion
+        if infusion:
+            self.dataloader = dataloader[0]
+            self.irdataloader = dataloader[1]
+        else:
+            self.dataloader = dataloader
         self.pbar = pbar
         self.stride = None
         self.data = None
@@ -105,7 +110,7 @@ class BaseValidator:
 
     @smart_inference_mode()
     def __call__(self, trainer=None, model=None):
-        """Executes validation process, running inference on dataloader and computing performance metrics."""
+        """执行验证过程，对数据加载器运行推理并计算性能指标。"""
         self.training = trainer is not None
         augment = self.args.augment and (not self.training)
         if self.training:
@@ -114,7 +119,7 @@ class BaseValidator:
             # force FP16 val during training
             self.args.half = self.device.type != "cpu" and trainer.amp
             model = trainer.ema.ema or trainer.model
-            model = model.half() if self.args.half else model.float()
+            model = model.half() if self.args.half else model.float() # 加速计算和节约显存
             # self.model = model
             self.loss = torch.zeros_like(trainer.loss_items, device=trainer.device)
             self.args.plots &= trainer.stopper.possible_stop or (trainer.epoch == trainer.epochs - 1)
@@ -153,19 +158,27 @@ class BaseValidator:
             if not pt:
                 self.args.rect = False
             self.stride = model.stride  # used in get_dataloader() for padding
-            self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
+            if self.infusion is False:
+                self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
 
             model.eval()
             model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup
 
         self.run_callbacks("on_val_start")
+        # 用于记录在特定设备（如 GPU）上的性能指标，主要是测量不同阶段的耗时。
         dt = (
             Profile(device=self.device),
             Profile(device=self.device),
             Profile(device=self.device),
             Profile(device=self.device),
         )
-        bar = TQDM(self.dataloader, desc=self.get_desc(), total=len(self.dataloader))
+        # 加载进度条和取数的loader
+        if self.infusion:
+            bar = TQDM(zip(self.dataloader, self.irdataloader), desc=self.get_desc(), total=len(self.dataloader))
+        else:
+            bar = TQDM(self.dataloader, desc=self.get_desc(), total=len(self.dataloader))
+
+        # 初始化指标计算、清空 JSON 记录（self.jdict）等。
         self.init_metrics(de_parallel(model))
         self.jdict = []  # empty before each val
         for batch_i, batch in enumerate(bar):
@@ -173,25 +186,37 @@ class BaseValidator:
             self.batch_i = batch_i
             # Preprocess
             with dt[0]:
-                batch = self.preprocess(batch)
+                # val模式下特有的预处理
+                if self.infusion:
+                    batch_rgb = self.preprocess(batch[0])
+                    batch_ir = self.preprocess(batch[1])
+                else:
+                    batch = self.preprocess(batch)
 
             # Inference
             with dt[1]:
-                preds = model(batch["img"], augment=augment)
+                # 使用模型 model 对图像进行预测，支持数据增强（augment）
+                if self.infusion and not isinstance(model, AutoBackend):
+                    preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
+                elif self.infusion and isinstance(model, AutoBackend):
+                    preds = model(batch_rgb["img"], augment=augment)
+                else:
+                    preds = model(batch["img"], augment=augment)
+
 
             # Loss
             with dt[2]:
                 if self.training:
-                    self.loss += model.loss(batch, preds)[1]
+                    self.loss += model.loss(batch_rgb, preds)[1]
 
             # Postprocess
             with dt[3]:
                 preds = self.postprocess(preds)
 
-            self.update_metrics(preds, batch)
+            self.update_metrics(preds, batch_rgb)
             if self.args.plots and batch_i < 3:
-                self.plot_val_samples(batch, batch_i)
-                self.plot_predictions(batch, preds, batch_i)
+                self.plot_val_samples(batch_rgb, batch_i)
+                self.plot_predictions(batch_rgb, preds, batch_i)
 
             self.run_callbacks("on_val_batch_end")
         stats = self.get_stats()
