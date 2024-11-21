@@ -169,12 +169,13 @@ class BaseModel(nn.Module):
             # 把要输入给网络的内容 输入进去！
             # concat应该是把两个输入x作为一个整体list直接输入然后forward中连接
             # 然而我需要的是两个输入到m中
-            if m.i != 0:
-                x = m(x)  # run
-            elif isinstance(x, list):
-                x = m(x[0], x[1]) # 顺序别乱，永远rgb在前，ir在后
-            else:
-                x = m(x, x)
+            x = m(x)
+            # if m.i != 0:
+            #     x = m(x)  # run
+            # elif isinstance(x, list):
+            #     x = m(x[0], x[1]) # 顺序别乱，永远rgb在前，ir在后
+            # else:
+            #     x = m(x, x)
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:
