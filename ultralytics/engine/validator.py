@@ -162,7 +162,7 @@ class BaseValidator:
             self.stride = model.stride  # used in get_dataloader() for padding
             # data.get获取的是一个str 或者 list
             if self.infusion:
-                self.dataloader, self.irdataloader = self.dataloader or self.get_mutil_dataloader(self.data.get(self.args.split), self.args.batch)
+                self.dataloader, self.irdataloader = (self.dataloader, self.irdataloader) if (self.dataloader is not None and self.irdataloader is not None) else self.get_mutil_dataloader(self.data.get(self.args.split), self.args.batch)
             else:
                 self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
             model.eval()
