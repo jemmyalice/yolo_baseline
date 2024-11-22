@@ -547,27 +547,24 @@ class ModelEMA:
 
 def strip_optimizer(f: Union[str, Path] = "best.pt", s: str = "", updates: dict = None) -> dict:
     """
-    Strip optimizer from 'f' to finalize training, optionally save as 's'.
+    从 'f' 中移除优化器以完成训练，选项保存为 's'。
 
-    Args:
-        f (str): file path to model to strip the optimizer from. Default is 'best.pt'.
-        s (str): file path to save the model with stripped optimizer to. If not provided, 'f' will be overwritten.
-        updates (dict): a dictionary of updates to overlay onto the checkpoint before saving.
+    参数：
+        f (str)：要移除优化器的模型文件路径。默认为 'best.pt'。
+        s (str)：保存移除优化器后的模型的文件路径。如果未提供，将覆盖 'f'。
+        updates (dict)：一个字典，用于在保存之前覆盖检查点中的内容。
 
-    Returns:
-        (dict): The combined checkpoint dictionary.
-
-    Example:
-        ```python
+    返回值：
+        (dict)：合并后的检查点字典。
+    示例：
+        python
         from pathlib import Path
         from ultralytics.utils.torch_utils import strip_optimizer
 
         for f in Path("path/to/model/checkpoints").rglob("*.pt"):
             strip_optimizer(f)
-        ```
-
-    Note:
-        Use `ultralytics.nn.torch_safe_load` for missing modules with `x = torch_safe_load(f)[0]`
+    注意：
+        使用 ultralytics.nn.torch_safe_load 来处理缺失的模块，通过 x = torch_safe_load(f)[0]。
     """
     try:
         x = torch.load(f, map_location=torch.device("cpu"))

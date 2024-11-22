@@ -126,6 +126,7 @@ class BaseValidator:
             model.eval()
         else:
             if str(self.args.model).endswith(".yaml"):
+                # 这一句只是说用自己yaml模型训练就会发出来
                 LOGGER.warning("WARNING ⚠️ validating an untrained model YAML will result in 0 mAP.")
             callbacks.add_integration_callbacks(self)
             model = AutoBackend(
@@ -199,7 +200,7 @@ class BaseValidator:
                 if self.infusion and not isinstance(model, AutoBackend):
                     preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
                 elif self.infusion and isinstance(model, AutoBackend):
-                    preds = model(batch_rgb["img"], augment=augment)
+                    preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
                 else:
                     preds = model(batch["img"], augment=augment)
 

@@ -153,7 +153,8 @@ class BaseModel(nn.Module):
                 # 如果 m.f（前一层层索引） 是整数，从 y 中直接取索引为 m.f 的元素，赋值给 x
                 # 为list则 对 m.f 的每个元素 j： 如果 j == -1，保留当前的 x。 如果 j != -1，从 y 中取索引为 j 的元素。
                 # x = y[m.f] if isinstance(m.f, int) else [x if j==-1 else y[j] for j in m.f]
-                # 增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
+
+                #增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
                 if -2 not in m.f:
                     x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
                 # ultralytics/nn/tasks.py:317训练时候要走这里，这里对于两个输入进行特殊处理
@@ -169,7 +170,9 @@ class BaseModel(nn.Module):
             # 把要输入给网络的内容 输入进去！
             # concat应该是把两个输入x作为一个整体list直接输入然后forward中连接
             # 然而我需要的是两个输入到m中
+
             x = m(x)
+
             # if m.i != 0:
             #     x = m(x)  # run
             # elif isinstance(x, list):

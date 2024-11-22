@@ -498,7 +498,7 @@ class AutoBackend(nn.Module):
         returns：
         （tuple）：包含原始输出张量和可视化处理输出的tuple（如果visualize=True）
                """
-        skip = False
+        self.skip = False
         if isinstance(im, list):
             b, ch, h, w = im[0].shape  # batch, channel, height, width
             if self.fp16 and im[0].dtype != torch.float16:
@@ -510,14 +510,14 @@ class AutoBackend(nn.Module):
             # PyTorch
             if self.pt or self.nn_module:
                 y = self.model([im[0], im[1]], augment=augment, visualize=visualize, embed=embed)
-                skip = True
+                self.skip = True
         else:
             b, ch, h, w = im.shape  # batch, channel, height, width
             if self.fp16 and im.dtype != torch.float16:
                 im = im.half()  # to FP16
             if self.nhwc:
                 im = im.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
-        if not skip:
+        if not self.skip:
             # PyTorch
             if self.pt or self.nn_module:
                 y = self.model(im, augment=augment, visualize=visualize, embed=embed)
@@ -716,17 +716,28 @@ class AutoBackend(nn.Module):
     def warmup(self, imgsz=(1, 3, 640, 640)):
         """
         Warm up the model by running one forward pass with a dummy input.
+        使用虚拟输入进行一次前向传播以预热模型。
 
         Args:
             imgsz (tuple): The shape of the dummy input tensor in the format (batch_size, channels, height, width)
+            imgsz (元组): 虚拟输入张量的形状，格式为 (batch_size, channels, height, width)
         """
         import torchvision  # noqa (import here so torchvision import time not recorded in postprocess time)
+        # 导入 torchvision（在这里导入，以便 torchvision 的导入时间不会记录在后处理时间中）
 
         warmup_types = self.pt, self.jit, self.onnx, self.engine, self.saved_model, self.pb, self.triton, self.nn_module
-        if any(warmup_types) and (self.device.type != "cpu" or self.triton):
+        # 定义需要预热的模型类型
+
+        if any(warmup_types) and (self.device.type!="cpu" or self.triton):
+        # if any(warmup_types) and (self.triton):
+            # 如果有需要预热的模型类型，并且设备不是 CPU 或者使用 Triton
             im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
+            # 创建一个虚拟输入张量，形状为 imgsz，数据类型根据 fp16 选择半精度或单精度，设备为 self.device
+
             for _ in range(2 if self.jit else 1):
+                # 如果使用 JIT，则进行两次前向传播，否则进行一次
                 self.forward(im)  # warmup
+                # 调用前向传播函数进行预热
 
     @staticmethod
     def _model_type(p="path/to/model.pt"):

@@ -819,6 +819,7 @@ class BaseTrainer:
                 # 如果last模型检查点存在，它会调用strip_optimizer函数来移除优化器的状态，因为在评估阶段我们不需要优化器的状态。
                 if f is self.last:
                     ckpt = strip_optimizer(f)
+
                 # 如果best模型检查点存在，它会更新best.pt的训练指标从last.pt，然后调用strip_optimizer函数来移除优化器的状态。
                 elif f is self.best:
                     k = "train_results"  # 从last.pt更新best.pt训练信息
