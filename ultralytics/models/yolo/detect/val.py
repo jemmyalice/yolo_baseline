@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from ultralytics.data import build_dataloader, build_yolo_dataset, converter # 加载数据集的函数
+from ultralytics.data import build_dataloader, build_yolo_dataset, converter, build_mutil_dataloader # 加载数据集的函数
 from ultralytics.engine.validator import BaseValidator
 from ultralytics.utils import LOGGER, ops
 from ultralytics.utils.checks import check_requirements  # 定义了一些常用的工具函数
@@ -242,6 +242,12 @@ class DetectionValidator(BaseValidator):
         """Construct and return dataloader."""
         dataset = self.build_dataset(dataset_path, batch=batch_size, mode="val")
         return build_dataloader(dataset, batch_size, self.args.workers, shuffle=False, rank=-1)  # return dataloader
+
+    def get_mutil_dataloader(self, dataset_path, batch_size):
+        """Construct and return dataloader."""
+        dataset1 = self.build_dataset(dataset_path[0], batch=batch_size, mode="val")
+        dataset2 = self.build_dataset(dataset_path[1], batch=batch_size, mode="val")
+        return build_mutil_dataloader(dataset1, dataset2, batch_size, self.args.workers, shuffle=False, rank=-1)  # return dataloader
 
     def plot_val_samples(self, batch, ni):
         """Plot validation image samples."""

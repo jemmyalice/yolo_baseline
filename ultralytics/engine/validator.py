@@ -79,7 +79,7 @@ class BaseValidator:
         """
         self.args = get_cfg(overrides=args)
         self.infusion = infusion
-        if infusion:
+        if infusion and dataloader != None:
             self.dataloader = dataloader[0]
             self.irdataloader = dataloader[1]
         else:
@@ -136,7 +136,7 @@ class BaseValidator:
                 data=self.args.data,
                 fp16=self.args.half,
             )
-            # self.model = model
+            self.model = model
             self.device = model.device  # update device
             self.args.half = model.fp16  # update half
             stride, pt, jit, engine = model.stride, model.pt, model.jit, model.engine
@@ -147,6 +147,7 @@ class BaseValidator:
                 self.args.batch = model.metadata.get("batch", 1)  # export.py models default to batch-size 1
                 LOGGER.info(f"Setting batch={self.args.batch} input of shape ({self.args.batch}, 3, {imgsz}, {imgsz})")
 
+            # 返回一个字典
             if str(self.args.data).split(".")[-1] in {"yaml", "yml"}:
                 self.data = check_det_dataset(self.args.data)
             elif self.args.task == "classify":
@@ -159,9 +160,11 @@ class BaseValidator:
             if not pt:
                 self.args.rect = False
             self.stride = model.stride  # used in get_dataloader() for padding
-            if self.infusion is False:
+            # data.get获取的是一个str 或者 list
+            if self.infusion:
+                self.dataloader, self.irdataloader = self.dataloader or self.get_mutil_dataloader(self.data.get(self.args.split), self.args.batch)
+            else:
                 self.dataloader = self.dataloader or self.get_dataloader(self.data.get(self.args.split), self.args.batch)
-
             model.eval()
             model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup
 
@@ -200,7 +203,7 @@ class BaseValidator:
                 if self.infusion and not isinstance(model, AutoBackend):
                     preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
                 elif self.infusion and isinstance(model, AutoBackend):
-                    preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
+                    preds = model([batch_rgb["img"], batch_ir["imzg"]], augment=augment)
                 else:
                     preds = model(batch["img"], augment=augment)
 
