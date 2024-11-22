@@ -203,7 +203,7 @@ class BaseValidator:
                 if self.infusion and not isinstance(model, AutoBackend):
                     preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
                 elif self.infusion and isinstance(model, AutoBackend):
-                    preds = model([batch_rgb["img"], batch_ir["imzg"]], augment=augment)
+                    preds = model([batch_rgb["img"], batch_ir["img"]], augment=augment)
                 else:
                     preds = model(batch["img"], augment=augment)
 
