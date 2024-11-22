@@ -7,8 +7,7 @@ warnings.filterwarnings('ignore')
 if __name__=='__main__':
 
     # model = YOLO(r'F:\ultralytics-main\yolo11s.pt')
-    model = YOLO(r'F:\downloads\chorme\best.pt')
-    # model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\inf_conv_yolo11n.yaml')
+    model = YOLO(r'F:\ultralytics-main\ultralytics\cfg\models\11\infyolo11n.yaml')
     model.train(data=r'F:\ultralytics-main\data\llvip\data_infusion.yaml',
     # model.train(data=r'F:\ultralytics-main\data\llvip\data.yaml',
         lr0=0.0001,  # Learning rate
@@ -32,3 +31,17 @@ if __name__=='__main__':
         project='runs/train',
         name='exp',
     )
+
+    # 使用验证集进行评估
+    # model = YOLO(r'F:\downloads\chorme\best.pt')
+    # results = model.val(
+    #     data='/kaggle/input/llvip-converted/data_fusion.yaml',  # 配置文件路径，包含数据集路径和类别信息
+    #     imgsz=640,  # 输入图像的大小，和训练时的一致
+    #     batch=8,  # 每次评估时的批次大小
+    #     device='0',  # 使用的设备，如果有 GPU 可设置为 'cuda'
+    #     conf=0.50,  # 置信度阈值，低于该阈值的预测结果会被丢弃
+    #     save=True,  # 是否保存预测结果（保存到 runs 文件夹）
+    #     save_txt=True,  # 是否保存检测框坐标的文本文件（同一文件夹下会生成 `.txt` 文件）
+    #     visualize=True,  # 是否可视化评估过程，显示图像
+    #     line_width=3  # 画框时的线宽
+    # )

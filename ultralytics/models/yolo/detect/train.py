@@ -154,7 +154,7 @@ class DetectionTrainer(BaseTrainer):
         # 这可能是为了处理类别不平衡问题，即数据集中某些类别的样本数量比其他类别多得多。
         # TODO: self.model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc
 
-    ## 从这里进入的DetectionModel
+    # 从这里进入的DetectionModel
     def get_model(self, cfg=None, weights=None, verbose=True):
         """返回 a YOLO detection model."""
         # 从这里进入的DetectionModel

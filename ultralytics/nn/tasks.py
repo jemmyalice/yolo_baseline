@@ -107,7 +107,8 @@ class BaseModel(nn.Module):
             (torch.Tensor): 如果x是字典（训练）或网络预测（推理），则进入loss。
         """
         # 传入的x是一个batch字典，其中batch["ir"] batch["rgb"]又为一个字典，其中有取文件的信息
-        if isinstance(x, dict):  # for cases of training and validating while training.
+        # 训练后验证进去虽然传入的是一个batch，但是preds不为None，不影响
+        if isinstance(x, dict):  # 适用于训练和训练时验证的情况。
             return self.loss(x, *args, **kwargs)
         return self.predict(x, *args, **kwargs) # 这进行了网络构建，预测也会进这个
 
@@ -153,7 +154,6 @@ class BaseModel(nn.Module):
                 # 如果 m.f（前一层层索引） 是整数，从 y 中直接取索引为 m.f 的元素，赋值给 x
                 # 为list则 对 m.f 的每个元素 j： 如果 j == -1，保留当前的 x。 如果 j != -1，从 y 中取索引为 j 的元素。
                 # x = y[m.f] if isinstance(m.f, int) else [x if j==-1 else y[j] for j in m.f]
-
                 #增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
                 if -2 not in m.f:
                     x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
@@ -161,8 +161,7 @@ class BaseModel(nn.Module):
                 # 因为一开始进来的时候传的是list所以可以这样
                 elif isinstance(x, list):
                     x = x
-                else:
-                    # 在yolo模型定义时第一次建造网络时传入的是一个tensor，使用infusion
+                else:# 在yolo模型定义时第一次建造网络时传入的是一个tensor，使用infusion
                     x = [x, x]
             if profile:
                 self._profile_one_layer(m, x, dt)
@@ -175,10 +174,10 @@ class BaseModel(nn.Module):
 
             # if m.i != 0:
             #     x = m(x)  # run
-            # elif isinstance(x, list):
-            #     x = m(x[0], x[1]) # 顺序别乱，永远rgb在前，ir在后
+            # elif isinstance(x, list):# 传入逻辑为[batch["rgb"], batch["ir"]]
+            #     x = m(x[0], x[1]) # 实际训练/预测的时候 输入m.i = 0但是x为list
             # else:
-            #     x = m(x, x)
+            #     x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:
@@ -199,24 +198,22 @@ class BaseModel(nn.Module):
 
     def _profile_one_layer(self, m, x, dt):
         """
-        Profile the computation time and FLOPs of a single layer of the model on a given input. Appends the results to
-        the provided list.
-
-        Args:
-            m (nn.Module): The layer to be profiled.
-            x (torch.Tensor): The input data to the layer.
-            dt (list): A list to store the computation time of the layer.
-
-        Returns:
-            None
+        根据给定的输入，分析模型单个层的计算时间和 FLOP。将结果附加到
+        提供的列表中。
+        参数：
+            m (nn.Module)：要分析的层。
+            x (torch.Tensor)：层的输入数据。
+            dt (list)：用于存储层计算时间的列表。
+        返回：
+            无
         """
-        c = m == self.model[-1] and isinstance(x, list)  # is final layer list, copy input as inplace fix
+        c = m==self.model[-1] and isinstance(x, list)  # is final layer list, copy input as inplace fix
         flops = thop.profile(m, inputs=[x.copy() if c else x], verbose=False)[0] / 1e9 * 2 if thop else 0  # GFLOPs
         t = time_sync()
         for _ in range(10):
             m(x.copy() if c else x)
         dt.append((time_sync() - t) * 100)
-        if m == self.model[0]:
+        if m==self.model[0]:
             LOGGER.info(f"{'time (ms)':>10s} {'GFLOPs':>10s} {'params':>10s}  module")
         LOGGER.info(f"{dt[-1]:10.2f} {flops:10.2f} {m.np:10.0f}  {m.type}")
         if c:

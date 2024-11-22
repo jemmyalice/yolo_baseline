@@ -23,7 +23,7 @@ exist_ok: False # (bool) 是否覆盖现有的实验
 pretrained: True # (bool | str) 是否使用预训练的模型（bool）或从中加载权重的模型（str）
 optimizer: auto # (str) 使用的优化器，选项=[SGD, Adam, Adamax, AdamW, NAdam, RAdam, RMSProp, auto]
 # AdamW收敛快，SGD效果好
-verbose: True # (bool) 是否打印详细输出
+verbose: True # (bool) 是否打印详细输出网络的详细信息
 seed: 0 # (int) 用于可复现性的随机种子
 deterministic: True # (bool) 是否启用确定性模式
 single_cls: False # (bool) 将多类数据作为单类训练
