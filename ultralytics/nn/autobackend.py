@@ -517,7 +517,7 @@ class AutoBackend(nn.Module):
                 im = im.half()  # to FP16
             if self.nhwc:
                 im = im.permute(0, 2, 3, 1)  # torch BCHW to numpy BHWC shape(1,320,192,3)
-        if skip:
+        if not skip:
             # PyTorch
             if self.pt or self.nn_module:
                 y = self.model(im, augment=augment, visualize=visualize, embed=embed)
