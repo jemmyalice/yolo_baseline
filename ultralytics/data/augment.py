@@ -198,9 +198,10 @@ class Compose:
         """
         state = random.getstate()
         for t in self.transforms:
-            random.setstate(state)
-            # print(state)  # 打印当前随机数生成器的状态
+            # random.setstate(state)
+            print(state)  # 打印当前随机数生成器的状态
             data = t(data)
+        # 在使用augment的时候让随机数自己飞，只在一个batch处理完后恢复
         if state != random.getstate():
             random.setstate(state)
         return data
