@@ -729,7 +729,6 @@ class AutoBackend(nn.Module):
         # 定义需要预热的模型类型
 
         if any(warmup_types) and (self.device.type!="cpu" or self.triton):
-        # if any(warmup_types) and (self.triton):
             # 如果有需要预热的模型类型，并且设备不是 CPU 或者使用 Triton
             im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
             # 创建一个虚拟输入张量，形状为 imgsz，数据类型根据 fp16 选择半精度或单精度，设备为 self.device

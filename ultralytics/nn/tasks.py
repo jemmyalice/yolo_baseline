@@ -328,6 +328,7 @@ class BaseModel(nn.Module):
             preds = self.forward(batch["img"]) if preds is None else preds
 
         # 通过预测结果和batch原标签的区别计算损失函数
+        # 进入ultralytics.utils.loss.v8DetectionLoss.__call__
         return self.criterion(preds, batch)
 
     def init_criterion(self):

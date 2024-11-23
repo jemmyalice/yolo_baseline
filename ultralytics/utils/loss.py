@@ -221,9 +221,12 @@ class v8DetectionLoss:
         anchor_points, stride_tensor = make_anchors(feats, self.stride, 0.5)
 
         # Targets
-        if "rgb" in batch:
+        # if "rgb" in batch:
+        #     targets = torch.cat((
+        #     batch["rgb"]["batch_idx"].view(-1, 1), batch["rgb"]["cls"].view(-1, 1), batch["rgb"]["bboxes"]), 1)
+        if "ir" in batch:
             targets = torch.cat((
-            batch["rgb"]["batch_idx"].view(-1, 1), batch["rgb"]["cls"].view(-1, 1), batch["rgb"]["bboxes"]), 1)
+            batch["ir"]["batch_idx"].view(-1, 1), batch["ir"]["cls"].view(-1, 1), batch["ir"]["bboxes"]), 1)
         else:
             targets = torch.cat((
                 batch["batch_idx"].view(-1, 1), batch["cls"].view(-1, 1), batch["bboxes"]), 1)

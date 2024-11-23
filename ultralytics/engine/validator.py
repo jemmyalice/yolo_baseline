@@ -188,6 +188,7 @@ class BaseValidator:
         for batch_i, batch in enumerate(bar):
             self.run_callbacks("on_val_batch_start")
             self.batch_i = batch_i
+
             # Preprocess
             with dt[0]:
                 # val模式下特有的预处理

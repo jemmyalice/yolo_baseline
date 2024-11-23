@@ -101,6 +101,7 @@ class BaseDataset(Dataset):
             self.cache_images()
 
         # Transforms
+        # __init__ 函数是 Python 类的初始化方法，它在创建对象时只会执行一次。
         self.transforms = self.build_transforms(hyp=hyp)
 
     def get_img_files(self, img_path):

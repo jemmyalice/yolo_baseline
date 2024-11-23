@@ -142,7 +142,6 @@ class BaseTransform:
         self.apply_instances(labels)
         self.apply_semantic(labels)
 
-
 class Compose:
     """
     A class for composing multiple image transformations.
@@ -197,8 +196,13 @@ class Compose:
             >>> compose = Compose(transforms)
             >>> transformed_data = compose(input_data)
         """
+        state = random.getstate()
         for t in self.transforms:
+            random.setstate(state)
+            # print(state)  # 打印当前随机数生成器的状态
             data = t(data)
+        if state != random.getstate():
+            random.setstate(state)
         return data
 
     def append(self, transform):
@@ -314,7 +318,6 @@ class Compose:
         """
         return f"{self.__class__.__name__}({', '.join([f'{t}' for t in self.transforms])})"
 
-
 class BaseMixTransform:
     """
     Base class for mix transformations like MixUp and Mosaic.
@@ -401,6 +404,7 @@ class BaseMixTransform:
 
         # Update cls and texts
         labels = self._update_label_text(labels)
+
         # Mosaic or MixUp
         labels = self._mix_transform(labels)
         labels.pop("mix_labels", None)
@@ -1918,26 +1922,25 @@ class Albumentations:
 
 
 class Format:
-    """
-    A class for formatting image annotations for object detection, instance segmentation, and pose estimation tasks.
+    """用于格式化图像注释的类，用于对象检测，实例分割和构成估计任务。
 
-    This class standardizes image and instance annotations to be used by the `collate_fn` in PyTorch DataLoader.
+    此类标准化图像和实例注释将由pytorch dataLoader中的`collate_fn`使用。
 
-    Attributes:
-        bbox_format (str): Format for bounding boxes. Options are 'xywh' or 'xyxy'.
-        normalize (bool): Whether to normalize bounding boxes.
-        return_mask (bool): Whether to return instance masks for segmentation.
-        return_keypoint (bool): Whether to return keypoints for pose estimation.
-        return_obb (bool): Whether to return oriented bounding boxes.
-        mask_ratio (int): Downsample ratio for masks.
-        mask_overlap (bool): Whether to overlap masks.
-        batch_idx (bool): Whether to keep batch indexes.
-        bgr (float): The probability to return BGR images.
+     属性：
+         Bbox_format（STR）：用于边界框的格式。选项是“ XYWH”或“ XYXY”。
+         标准化（bool）：是否要标准化边界框。
+         return_mask（bool）：是否要返回实例掩码进行分割。
+         return_keypoint（bool）：是否要返回姿势估计的关键点。
+         return_obb（bool）：是否要返回定向边界框。
+         mask_ratio（int）：面具的下样本比。
+         mask_overlap（bool）：是否重叠面具。
+         batch_idx（bool）：是否保留批次索引。
+         BGR（Float）：返回BGR图像的可能性。
 
-    Methods:
-        __call__: Formats labels dictionary with image, classes, bounding boxes, and optionally masks and keypoints.
-        _format_img: Converts image from Numpy array to PyTorch tensor.
-        _format_segments: Converts polygon points to bitmap masks.
+     方法：
+         __CALL__：格式标记带有图像，类，边界框以及可选的掩码和关键的字典。
+         _format_img：将图像从numpy阵列转换为pytorch张量。
+         _format_segments：将多边形指数转换为位图蒙版。
 
     Examples:
         >>> formatter = Format(bbox_format="xywh", normalize=True, return_mask=True)
@@ -2271,20 +2274,19 @@ class RandomLoadText:
 
 
 def v8_transforms(dataset, imgsz, hyp, stretch=False):
-    """
-    Applies a series of image transformations for training.
+    """应用一系列图像转换进行训练。
 
-    This function creates a composition of image augmentation techniques to prepare images for YOLO training.
-    It includes operations such as mosaic, copy-paste, random perspective, mixup, and various color adjustments.
+     此功能创建了图像增强技术的组成，以准备YOLO训练的图像。
+     它包括马赛克，拷贝性，随机透视，混合和各种颜色调整等操作。
 
-    Args:
-        dataset (Dataset): The dataset object containing image data and annotations.
-        imgsz (int): The target image size for resizing.
-        hyp (Dict): A dictionary of hyperparameters controlling various aspects of the transformations.
-        stretch (bool): If True, applies stretching to the image. If False, uses LetterBox resizing.
+    args：
+     dataset （dataset）：包含图像数据和注释的数据集对象。
+     IMGSZ（int）：用于调整大小的目标图像大小。
+     hyp（dict）：控制转换各个方面的超参数词典。
+     stretch （bool）：如果为真，则适用于图像。如果为false，请使用Letterbox调整大小。
 
-    Returns:
-        (Compose): A composition of image transformations to be applied to the dataset.
+     返回：
+     （Compose）：要应用于数据集的图像转换的组成。
 
     Examples:
         >>> from ultralytics.data.dataset import YOLODataset

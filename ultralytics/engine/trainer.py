@@ -5,6 +5,7 @@ Train a model on a dataset.
 Usage:
     $ yolo mode=train model=yolov8n.pt data=coco8.yaml imgsz=640 epochs=100 batch=16
 """
+import random
 
 import gc
 import math
@@ -399,6 +400,15 @@ class BaseTrainer:
         # 这样在恢复训练时，学习率调度器可以从正确的位置开始调整学习率。
         self.scheduler.last_epoch = self.start_epoch - 1  # do not move
         self.run_callbacks("on_pretrain_routine_end") # 这个回调为空
+    def set_seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)  # 多GPU支持
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
     def _do_train(self, world_size=1):
         """如果参数指定，则完成训练、评估和绘图。"""
@@ -463,12 +473,54 @@ class BaseTrainer:
                     pbar = TQDM(enumerate(self.train_loader), total=nb, dynamic_ncols=True)  # 初始化进度条
 
             self.tloss = None
+
+            epoch_seed = int(time.time())
+            self.set_seed(epoch_seed)
+
             for i, batch in pbar: # 等于一个个epoch训练
                 self.run_callbacks("on_train_batch_start")
                 if self.infusion:
                     batch_rgb, batch_ir = batch
                     # 重新组织为字典
                     batch = {"rgb": batch_rgb, "ir": batch_ir}
+
+                    # import numpy as np
+                    # import matplotlib.pyplot as plt
+                    # from PIL import Image
+                    # image1_np = batch_rgb["img"][0].cpu().numpy()  # 第一个图片的 NumPy 数组
+                    # image2_np = batch_ir["img"][0].cpu().numpy()  # 第二个图片的 NumPy 数组
+                    #
+                    # # 将 NumPy 数组转换为 PIL 图像
+                    # image1_pil = Image.fromarray((image1_np.transpose(1, 2, 0) * 255).astype(np.uint8))
+                    # image2_pil = Image.fromarray((image2_np.transpose(1, 2, 0) * 255).astype(np.uint8))
+                    #
+                    # # 调整图像大小（降低到更小的分辨率，比如 64x64）
+                    # image1_resized = image1_pil.resize((64, 64), Image.LANCZOS)
+                    # image2_resized = image2_pil.resize((64, 64), Image.LANCZOS)
+                    # plt.ion()
+                    # # 创建一个新的图形并显示图像
+                    # plt.figure(figsize=(8, 4))
+                    #
+                    # # 显示第一个图像
+                    # plt.subplot(1, 2, 1)
+                    # plt.imshow(image1_resized)
+                    # plt.title('Image 1 (64x64)')
+                    # plt.axis('off')
+                    #
+                    # # 显示第二个图像
+                    # plt.subplot(1, 2, 2)
+                    # plt.imshow(image2_resized)
+                    # plt.title('Image 2 (64x64)')
+                    # plt.axis('off')
+                    #
+                    # # 保存调整后的图像
+                    # image1_resized.save('image1_resized_64.png')
+                    # image2_resized.save('image2_resized_64.png')
+                    #
+                    # # 显示绘图
+                    # plt.tight_layout()
+                    # plt.show()
+                    # plt.pause(5)  # 暂停5秒; 可以根据需要更改
 
 
                 # Warmup 学习率与动量
@@ -544,6 +596,8 @@ class BaseTrainer:
                         else:
                             self.plot_training_samples(batch, ni)  # 逐epoch画图
 
+                epoch_seed = int(time.time())
+                self.set_seed(epoch_seed)
                 self.run_callbacks("on_train_batch_end")
 
             self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
@@ -595,6 +649,7 @@ class BaseTrainer:
             epoch += 1
             if self.infusion:
                 self.train_loader.sampler.reset()
+
         # 如果使用主程序， 一般rank都是0 -1
         if RANK in {-1, 0}:
             # Do final val with best.pt
