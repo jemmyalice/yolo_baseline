@@ -205,15 +205,12 @@ class Compose:
         # i = 0
 
         for t in self.transforms:
-<<<<<<< HEAD
             # transform中第一层有重叠层会重复进入，所以只有最后一层恢复状态
             # if i == 6:
             #     last_one = True
             # print(i, state[1][:5:])  # 打印当前随机数生成器的状态
-=======
             # random.setstate(state)
             # print(state)  # 打印当前随机数生成器的状态
->>>>>>> 3dd6f56dbc117484bb85ac9b1df0d2df5a3964da
             data = t(data)
             # i = i + 1
         # 在使用augment的时候让随机数自己飞，只在一个batch处理完后恢复
