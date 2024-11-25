@@ -295,6 +295,8 @@ class BaseDataset(Dataset):
     def pv_lock(cls):
         # lock为真就设置，lock为假就赋值
         if not cls.lock:
+            # 直接不填就是随机种子
+            random.seed()
             cls.batch_state.append(random.getstate())
             cls.each_batch = cls.each_batch + 1
             if cls.each_batch==cls.batch_size:
