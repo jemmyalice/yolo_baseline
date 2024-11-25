@@ -1102,6 +1102,8 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
 
             #这个是普遍的输入到网络中的参数，后面有特殊进行一个修改
             #将c1和c2（输入输出通道数）放入args列表中，并保持其他参数不变。
+            if m in{ACDF}:
+                c2 = 3
             args = [c1, c2, *args[1:]]
             if m in {eca_layer}:
                 ch[f] = ch[f] * 2
