@@ -1,6 +1,7 @@
 # Ultralytics YOLO 🚀, AGPL-3.0 license
 
 import json
+import random
 from collections import defaultdict
 from itertools import repeat
 from multiprocessing.pool import ThreadPool
@@ -53,7 +54,6 @@ class YOLODataset(BaseDataset):
     Returns:
         (torch.utils.data.Dataset): 可用于训练对象检测模型的PyTorch数据集对象。
     """
-
     def __init__(self, *args, data=None, task="detect", **kwargs):
         """Initializes the YOLODataset with optional configurations for segments and keypoints."""
         self.use_segments = task == "segment"

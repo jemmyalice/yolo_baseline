@@ -2,6 +2,7 @@
 
 import math
 import random
+import time
 from copy import deepcopy
 from typing import Tuple, Union
 
@@ -9,6 +10,7 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image
+from networkx.generators.directed import random_k_out_graph
 
 from ultralytics.data.utils import polygons2masks, polygons2masks_overlap
 from ultralytics.utils import LOGGER, colorstr
@@ -196,14 +198,22 @@ class Compose:
             >>> compose = Compose(transforms)
             >>> transformed_data = compose(input_data)
         """
-        state = random.getstate()
+        # 每次进来保证不会在调用过程中对随机种子发生改变
+        # state = random.getstate()
+        # random.setstate(state)
+        # last_one = False
+        # i = 0
+
         for t in self.transforms:
-            # random.setstate(state)
-            print(state)  # 打印当前随机数生成器的状态
+            # transform中第一层有重叠层会重复进入，所以只有最后一层恢复状态
+            # if i == 6:
+            #     last_one = True
+            # print(i, state[1][:5:])  # 打印当前随机数生成器的状态
             data = t(data)
+            # i = i + 1
         # 在使用augment的时候让随机数自己飞，只在一个batch处理完后恢复
-        if state != random.getstate():
-            random.setstate(state)
+        # if last_one and state != random.getstate():
+        #     random.setstate(state)
         return data
 
     def append(self, transform):
@@ -1367,6 +1377,9 @@ class RandomHSV:
             >>> hsv_augmenter(labels)
             >>> augmented_img = labels["img"]
         """
+        state = random.getstate()
+        random.seed(int(time.time() * 1000000))
+
         img = labels["img"]
         if self.hgain or self.sgain or self.vgain:
             r = np.random.uniform(-1, 1, 3) * [self.hgain, self.sgain, self.vgain] + 1  # random gains
@@ -1380,6 +1393,9 @@ class RandomHSV:
 
             im_hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
             cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR, dst=img)  # no return needed
+
+        random.setstate(state)
+
         return labels
 
 

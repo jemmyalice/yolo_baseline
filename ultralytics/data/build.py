@@ -45,14 +45,12 @@ class InfiniteDataLoader(dataloader.DataLoader):
 # 返回的是batch_sampler的sampler的长度，这通常是数据集的大小。
     def __iter__(self):
         """Creates a sampler that repeats indefinitely."""
-        state = random.getstate()
-        random.setstate(state)
-        # 不同dataloader分别进入这个iter，len(self)为batch长度
+        # state = random.getstate()
+        # 不同dataloader分别进入这个iter，len(self)为batch个数 也就是数据集/batch
         for i in range(len(self)):
             # print(f'-----------------------------------------------------------------{i}')
-            random.setstate(state)
             yield next(self.iterator)
-            state = random.getstate()
+            # random.setstate(state)
 
 # 重置迭代器。这在你想要在训练过程中修改数据集的设置时非常有用。
     def reset(self):
@@ -137,8 +135,8 @@ class PairedSampler(Sampler):
         if self.shuffle and self.epoch_shuffle:  # 如果当前没有索引，就生成新的
             # Shuffle indices for both datasets at the same time
             self.epoch_shuffle = False
-            # seed = self._generate_seed()
-            # random.seed(seed)  # 设置随机种子
+            seed = self._generate_seed()
+            random.seed(seed)  # 设置随机种子
             random.shuffle(self.indices)
         # print("PairedSampler indices:", self.indices)  # 打印返回的索引
         return iter(self.indices)

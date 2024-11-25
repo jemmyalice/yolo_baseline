@@ -198,6 +198,24 @@ class BaseValidator:
                 else:
                     batch = self.preprocess(batch)
 
+            import numpy as np
+            import matplotlib.pyplot as plt
+            from PIL import Image
+            image1_np = batch_rgb["img"][0].cpu().numpy()  # 第一个图片的 NumPy 数组
+            image2_np = batch_ir["img"][0].cpu().numpy()  # 第二个图片的 NumPy 数组
+
+            # 将 NumPy 数组转换为 PIL 图像
+            image1_pil = Image.fromarray((image1_np.transpose(1, 2, 0) * 255).astype(np.uint8))
+            image2_pil = Image.fromarray((image2_np.transpose(1, 2, 0) * 255).astype(np.uint8))
+
+            # 调整图像大小（降低到更小的分辨率，比如 64x64）
+            image1_resized = image1_pil.resize((256, 256), Image.LANCZOS)
+            image2_resized = image2_pil.resize((256, 256), Image.LANCZOS)
+
+            # 保存调整后的图像
+            image1_resized.save('valimage1_resized_64.png')
+            image2_resized.save('valimage2_resized_64.png')
+
             # Inference
             with dt[1]:
                 # 使用模型 model 对图像进行预测，支持数据增强（augment）

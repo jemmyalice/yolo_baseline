@@ -4,6 +4,7 @@ import glob
 import math
 import os
 import random
+import time
 from copy import deepcopy
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -45,7 +46,10 @@ class BaseDataset(Dataset):
         npy_files (list): List of numpy file paths.
         transforms (callable): Image transformation function.
     """
-
+    lock = False
+    each_batch = 0
+    batch_size = 0
+    batch_state = []
     def __init__(
         self,
         img_path,
@@ -78,6 +82,8 @@ class BaseDataset(Dataset):
         self.batch_size = batch_size
         self.stride = stride
         self.pad = pad
+        if 'train' in self.img_path:
+            BaseDataset.batch_size = self.batch_size
         if self.rect:
             assert self.batch_size is not None
             self.set_rectangle()
@@ -284,11 +290,32 @@ class BaseDataset(Dataset):
         self.batch_shapes = np.ceil(np.array(shapes) * self.imgsz / self.stride + self.pad).astype(int) * self.stride
         self.batch = bi  # batch index of image
 
+
+    @classmethod
+    def pv_lock(cls):
+        # lock为真就设置，lock为假就赋值
+        if not cls.lock:
+            cls.batch_state.append(random.getstate())
+            cls.each_batch = cls.each_batch + 1
+            if cls.each_batch==cls.batch_size:
+                cls.each_batch = 0
+                cls.lock = True
+        elif cls.lock:
+            random.setstate(cls.batch_state[cls.each_batch])
+            cls.each_batch = cls.each_batch + 1
+            if cls.each_batch==cls.batch_size:
+                cls.batch_state.clear()
+                cls.each_batch = 0
+                cls.lock = False
+
     # 想配对核心在于index，而index是由dataloader给出来的
     def __getitem__(self, index):
         """Returns transformed label information for given index."""
         # im_file = self.data[idx]["file_name"]  # 假设文件名在 data 中
         # print(f"Index: {idx}, im_file: {im_file}")
+        # print(f"{BaseDataset.each_batch} {random.getstate()}")
+        if 'train' in self.img_path:
+            self.__class__.pv_lock()
         return self.transforms(self.get_image_and_label(index))
 
     def get_image_and_label(self, index):
