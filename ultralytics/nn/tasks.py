@@ -153,16 +153,17 @@ class BaseModel(nn.Module):
             if m.f != -1:  # if not from previous layer 这就是需要concat多重输入的部分
                 # 如果 m.f（前一层层索引） 是整数，从 y 中直接取索引为 m.f 的元素，赋值给 x
                 # 为list则 对 m.f 的每个元素 j： 如果 j == -1，保留当前的 x。 如果 j != -1，从 y 中取索引为 j 的元素。
-                # x = y[m.f] if isinstance(m.f, int) else [x if j==-1 else y[j] for j in m.f]
+                x = y[m.f] if isinstance(m.f, int) else [x if j==-1 else y[j] for j in m.f]
+
                 #增加两种情况，一种是训练从batch中读入x为list，另一种是构建模型框架时第一层需要两个输入的情况
-                if -2 not in m.f:
-                    x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
-                # ultralytics/nn/tasks.py:317训练时候要走这里，这里对于两个输入进行特殊处理
-                # 因为一开始进来的时候传的是list所以可以这样
-                elif isinstance(x, list):
-                    x = x
-                else:# 在yolo模型定义时第一次建造网络时传入的是一个tensor，使用infusion
-                    x = [x, x]
+                # if -2 not in m.f:
+                #     x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+                # # ultralytics/nn/tasks.py:317训练时候要走这里，这里对于两个输入进行特殊处理
+                # # 因为一开始进来的时候传的是list所以可以这样
+                # elif isinstance(x, list):
+                #     x = x
+                # else:# 在yolo模型定义时第一次建造网络时传入的是一个tensor，使用infusion
+                #     x = [x, x]
             if profile:
                 self._profile_one_layer(m, x, dt)
 
@@ -170,14 +171,14 @@ class BaseModel(nn.Module):
             # concat应该是把两个输入x作为一个整体list直接输入然后forward中连接
             # 然而我需要的是两个输入到m中
 
-            x = m(x)
+            # x = m(x)
 
-            # if m.i != 0:
-            #     x = m(x)  # run
-            # elif isinstance(x, list):# 传入逻辑为[batch["rgb"], batch["ir"]]
-            #     x = m(x[0], x[1]) # 实际训练/预测的时候 输入m.i = 0但是x为list
-            # else:
-            #     x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
+            if m.i != 0:
+                x = m(x)  # run
+            elif isinstance(x, list):# 传入逻辑为[batch["rgb"], batch["ir"]]
+                x = m(x[0], x[1]) # 实际训练/预测的时候 输入m.i = 0但是x为list
+            else:
+                x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:

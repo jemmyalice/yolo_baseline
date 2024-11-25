@@ -209,8 +209,6 @@ class Compose:
             # if i == 6:
             #     last_one = True
             # print(i, state[1][:5:])  # 打印当前随机数生成器的状态
-            # random.setstate(state)
-            # print(state)  # 打印当前随机数生成器的状态
             data = t(data)
             # i = i + 1
         # 在使用augment的时候让随机数自己飞，只在一个batch处理完后恢复

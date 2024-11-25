@@ -74,7 +74,7 @@ class BaseDataset(Dataset):
         self.single_cls = single_cls
         self.prefix = prefix
         self.fraction = fraction
-        self.im_files = self.get_img_files(self.img_path)
+        self.im_files = self.get_img_files(self.img_path) #如果想数据集总数不为batch_size的倍数，用这个进行控制
         self.labels = self.get_labels()
         self.update_labels(include_class=classes)  # single_cls and include_class
         self.ni = len(self.labels)  # number of images
@@ -295,7 +295,6 @@ class BaseDataset(Dataset):
     def pv_lock(cls):
         # lock为真就设置，lock为假就赋值
         if not cls.lock:
-            # 直接不填就是随机种子
             random.seed()
             cls.batch_state.append(random.getstate())
             cls.each_batch = cls.each_batch + 1

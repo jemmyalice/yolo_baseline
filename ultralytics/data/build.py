@@ -38,21 +38,19 @@ class InfiniteDataLoader(dataloader.DataLoader):
         super().__init__(*args, **kwargs)
         object.__setattr__(self, "batch_sampler", _RepeatSampler(self.batch_sampler))
         self.iterator = super().__iter__()
-# 返回的是batch_sampler的sampler的长度，这通常是数据集的大小。
+    # 返回的是batch_sampler的sampler的长度，这通常是数据集的大小。
     def __len__(self):
         """Returns the length of the batch sampler's sampler."""
         return len(self.batch_sampler.sampler)
-# 返回的是batch_sampler的sampler的长度，这通常是数据集的大小。
+    # 返回的是batch_sampler的sampler的长度，这通常是数据集的大小。
     def __iter__(self):
         """Creates a sampler that repeats indefinitely."""
-        # state = random.getstate()
         # 不同dataloader分别进入这个iter，len(self)为batch个数 也就是数据集/batch
         for i in range(len(self)):
             # print(f'-----------------------------------------------------------------{i}')
             yield next(self.iterator)
-            # random.setstate(state)
 
-# 重置迭代器。这在你想要在训练过程中修改数据集的设置时非常有用。
+    # 重置迭代器。这在你想要在训练过程中修改数据集的设置时非常有用。
     def reset(self):
         """
         Reset iterator.

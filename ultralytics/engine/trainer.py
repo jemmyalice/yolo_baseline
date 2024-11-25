@@ -400,15 +400,6 @@ class BaseTrainer:
         # 这样在恢复训练时，学习率调度器可以从正确的位置开始调整学习率。
         self.scheduler.last_epoch = self.start_epoch - 1  # do not move
         self.run_callbacks("on_pretrain_routine_end") # 这个回调为空
-    def set_seed(self, seed):
-        random.seed(seed)
-        # np.random.seed(seed)
-        # torch.manual_seed(seed)
-        # if torch.cuda.is_available():
-        #     torch.cuda.manual_seed(seed)
-        #     torch.cuda.manual_seed_all(seed)  # 多GPU支持
-        #     torch.backends.cudnn.deterministic = True
-        #     torch.backends.cudnn.benchmark = False
 
     def _do_train(self, world_size=1):
         """如果参数指定，则完成训练、评估和绘图。"""
@@ -474,9 +465,6 @@ class BaseTrainer:
 
             self.tloss = None
 
-            # epoch_seed = int(time.time())
-            # self.set_seed(epoch_seed)
-
             for i, batch in pbar: # 等于一个个epoch训练
                 self.run_callbacks("on_train_batch_start")
                 if self.infusion:
@@ -484,23 +472,9 @@ class BaseTrainer:
                     # 重新组织为字典
                     batch = {"rgb": batch_rgb, "ir": batch_ir}
 
-                    import numpy as np
-                    import matplotlib.pyplot as plt
-                    from PIL import Image
-                    # image1_np = batch_rgb["img"][i].cpu().numpy()  # 第一个图片的 NumPy 数组
-                    # image2_np = batch_ir["img"][i].cpu().numpy()  # 第二个图片的 NumPy 数组
-                    #
-                    # # 将 NumPy 数组转换为 PIL 图像
-                    # image1_pil = Image.fromarray((image1_np.transpose(1, 2, 0) * 255).astype(np.uint8))
-                    # image2_pil = Image.fromarray((image2_np.transpose(1, 2, 0) * 255).astype(np.uint8))
-                    #
-                    # # 调整图像大小（降低到更小的分辨率，比如 64x64）
-                    # image1_resized = image1_pil.resize((256, 256), Image.LANCZOS)
-                    # image2_resized = image2_pil.resize((256, 256), Image.LANCZOS)
-                    #
-                    # # 保存调整后的图像
-                    # image1_resized.save(f'image1_resized_64{i}.png')
-                    # image2_resized.save(f'image2_resized_64{i}.png')
+                    # import numpy as np
+                    # import matplotlib.pyplot as plt
+                    # from PIL import Image
                     # for j in range(len(batch_rgb["img"])):
                     #     image1_np = batch_rgb["img"][j].cpu().numpy()  # 第一个图片的 NumPy 数组
                     #     image2_np = batch_ir["img"][j].cpu().numpy()  # 第一个图片的 NumPy 数组
@@ -514,9 +488,8 @@ class BaseTrainer:
                     #     image2_resized = image2_pil.resize((256, 256), Image.LANCZOS)
                     #
                     #     # 保存调整后的图像
-                    #     image1_resized.save(f'MYDATA/{epoch}CHANGE_image1_resized_64{i}{j}.png')
-                    #     image2_resized.save(f'MYDATA/{epoch}CHANGE_image2_resized_64{i}{j}.png')
-
+                    #     image1_resized.save(f'MYDATA1/{epoch}CHANGE_image1_resized_64{i}{j}.png')
+                    #     image2_resized.save(f'MYDATA1/{epoch}CHANGE_image2_resized_64{i}{j}.png')
 
                 # Warmup 学习率与动量
                 ni = i + nb * epoch
@@ -547,7 +520,7 @@ class BaseTrainer:
                         (self.tloss * i + self.loss_items) / (i + 1) if self.tloss is not None else self.loss_items
                     )
 
-                # Backward
+                # Backward 这里用于修改损失函数/增加损失函数
                 # 实现反向传播。scaler 是 AMP（自动混合精度）的缩放器，用于调整梯度规模，减少数值不稳定性。
                 self.scaler.scale(self.loss).backward()
 
@@ -590,9 +563,6 @@ class BaseTrainer:
                             self.plot_training_samples(batch["ir"], ni) # 逐epoch画图
                         else:
                             self.plot_training_samples(batch, ni)  # 逐epoch画图
-
-                # epoch_seed = int(time.time())
-                # self.set_seed(epoch_seed)
                 self.run_callbacks("on_train_batch_end")
 
             self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
