@@ -92,7 +92,6 @@ except ImportError:
 
 class BaseModel(nn.Module):
     """The BaseModel class serves as a base class for all the models in the Ultralytics YOLO family."""
-
     def forward(self, x, *args, **kwargs):
         """
             执行模型的前向传递，用于训练或推理。
@@ -177,6 +176,10 @@ class BaseModel(nn.Module):
                 x = m(x)  # run
             elif isinstance(x, list):# 传入逻辑为[batch["rgb"], batch["ir"]]
                 x = m(x[0], x[1]) # 实际训练/预测的时候 输入m.i = 0但是x为list
+            # hasattr(self, 'args')判断是否有 self.args 属性
+            # 针对传入为pt文件的amp检查专用
+            elif hasattr(self, 'args') and "model" in self.args and self.args['model'] == 'yolo11n.pt':
+                x = m(x)
             else:
                 # x = m(x[0], x) # 针对红外光的一维
                 x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
