@@ -178,6 +178,7 @@ class BaseModel(nn.Module):
             elif isinstance(x, list):# 传入逻辑为[batch["rgb"], batch["ir"]]
                 x = m(x[0], x[1]) # 实际训练/预测的时候 输入m.i = 0但是x为list
             else:
+                # x = m(x[0], x) # 针对红外光的一维
                 x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
@@ -1099,17 +1100,16 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 args[2] = int(
                     max(round(min(args[2], max_channels // 2 // 32)) * width, 1) if args[2] > 1 else args[2]
                 )  # num heads
-
             #这个是普遍的输入到网络中的参数，后面有特殊进行一个修改
             #将c1和c2（输入输出通道数）放入args列表中，并保持其他参数不变。
-            if m in{ACDF}:
-                c2 = 3
+            # if m in{ACDF}:
+            #     c2 = 3
             args = [c1, c2, *args[1:]]
-            if m in {eca_layer}:
-                ch[f] = ch[f] * 2
-                c1 = ch[f] # ACDF后要把out改为真的out，输入的out是真的out的一半
-                c2 = c1
-                args = [c1]
+            # if m in {eca_layer}:
+            #     ch[f] = ch[f] * 2
+            #     c1 = ch[f] # ACDF后要把out改为真的out，输入的out是真的out的一半
+            #     c2 = c1
+            #     args = [c1]
 
             # 如果模块是这里面的部分    它会在参数列表中插入重复的次数n
             if m in {
@@ -1136,6 +1136,18 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
                 legacy = False
                 if scale in "mlx":
                     args[3] = True
+        elif m is FusionNetwork:
+            c1 = args[0]
+            c1_i = args[1]
+            c2 = args[2]
+            if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
+                c2 = make_divisible(min(c2, max_channels) * width, 8)
+            args = [c1, c1_i, c2]
+        elif m is SEAttention:
+            c1 = c2 = args[0]
+            if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
+                c2 = make_divisible(min(c2, max_channels) * width, 8)
+            args = [c2]
         # 如果模块是AIFI，那么它会调整参数列表，把最近一层输出加入。
         elif m is AIFI:
             args = [ch[f], *args]
