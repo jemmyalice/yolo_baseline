@@ -181,7 +181,7 @@ class BaseModel(nn.Module):
             elif hasattr(self, 'args') and "model" in self.args and self.args['model'] == 'yolo11n.pt':
                 x = m(x)
             else:
-                # x = m(x[0], x) # 针对红外光的一维
+                # x = m(x, x[:, :1, :, :]) # 针对红外光的一维
                 x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
@@ -1146,6 +1146,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(min(c2, max_channels) * width, 8)
             args = [c1, c1_i, c2]
+        elif m is MF:
+            c1 = ch[-1]
+            c2 = 64
+            args = args
         # elif m is SEAttention:
         #     c1 = c2 = args[0]
         #     if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
