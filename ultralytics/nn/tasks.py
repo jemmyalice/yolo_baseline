@@ -181,8 +181,8 @@ class BaseModel(nn.Module):
             elif hasattr(self, 'args') and "model" in self.args and self.args['model'] == 'yolo11n.pt':
                 x = m(x)
             else:
-                x = m(x, x[:, :1, :, :]) # 针对红外光的一维
-                # x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
+                # x = m(x, x[:, :1, :, :]) # 针对红外光的一维
+                x = m(x, x) # 构建网络的输入 m.i = 0但是x为单tensor
 
             y.append(x if m.i in self.save else None)  # save output 保存每一层的输出
             if visualize:

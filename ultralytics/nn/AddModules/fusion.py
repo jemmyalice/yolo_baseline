@@ -56,15 +56,16 @@ class MF(nn.Module):  # stereo attention block
     def __init__(self, channels):
         super(MF, self).__init__()
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
-        self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
-        # self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
+        # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
+        self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         self.softmax = nn.Softmax(-1)
-        self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
-        # self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
+        # self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
+        self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
         self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
         self.se = SE_Block(64, 16)
         self.se_r = SE_Block(3,3)
-        self.se_i = SE_Block(1,1)
+        self.se_i = SE_Block(3,3)
+        # self.se_i = SE_Block(1,1)
 
     def forward(self, x, y):  # B * C * H * W #x_left, x_right
         x_left_ori, x_right_ori = x, y
