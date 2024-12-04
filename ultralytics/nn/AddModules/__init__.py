@@ -5,3 +5,4 @@ from  .EMAfusion import *
 from .ACDF_F import *
 from .Add_baseline_test import *
 from .SKnet_fusion import *
+from .SKnet1_fusion import *
