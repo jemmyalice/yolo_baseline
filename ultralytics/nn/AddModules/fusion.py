@@ -67,7 +67,7 @@ class MF(nn.Module):  # stereo attention block
         self.se_i = SE_Block(3,3)
         # self.se_i = SE_Block(1,1)
 
-    def forward(self, x, y):  # B * C * H * W #x_left, x_right
+    def forward(self, x, y):  # B * C * H * W #x_   left, x_right
         x_left_ori, x_right_ori = x, y
         b, c, h, w = x_left_ori.shape
         x_left = self.se_r(x_left_ori)
