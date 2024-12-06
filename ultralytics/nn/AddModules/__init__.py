@@ -8,4 +8,6 @@ from .SKnet_fusion import *
 from .SKnet1_fusion import *
 from .SKnet2_fusion import *
 from .SKnet3_fusion import *
+from .SKnet4_fusion_changec import *
+from .SKnet5_fusion_nochangec_xyatten import *
 

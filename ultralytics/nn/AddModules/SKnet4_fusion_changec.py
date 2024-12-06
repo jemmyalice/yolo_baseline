@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn import init
 from collections import OrderedDict
 
-__all__ = ["MF4"]
+__all__ = ["MF5"]
 def dsconv_3x3(in_channel, out_channel):
     return nn.Sequential(
         nn.Conv2d(in_channel, in_channel, kernel_size=3, stride=1, padding=1, groups=in_channel),
@@ -12,7 +12,23 @@ def dsconv_3x3(in_channel, out_channel):
         nn.BatchNorm2d(out_channel),
         nn.ReLU(inplace=True)
     )
+class DSConvBlock(nn.Module):
+    """
+    Depthwise Separable Convolution Block with Leaky ReLU activation.
+    """
+    def __init__(self, in_channel, out_channel, negative_slope=0.01):
+        super(DSConvBlock, self).__init__()
+        self.depthwise = nn.Conv2d(in_channel, in_channel, kernel_size=3, stride=1, padding=1, groups=in_channel)
+        self.pointwise = nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=1, padding=0, groups=1)
+        self.batchnorm = nn.BatchNorm2d(out_channel)
+        self.activation = nn.LeakyReLU(negative_slope=negative_slope, inplace=True)
 
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        x = self.batchnorm(x)
+        x = self.activation(x)
+        return x
 class SE_Block(nn.Module):
     def __init__(self, ch_in, reduction=16):
         super(SE_Block, self).__init__()
@@ -41,7 +57,6 @@ class SE_Block(nn.Module):
         y = self.avg_pool(x).view(b, c) # squeeze操作
         y = self.fc(y).view(b, c, 1, 1) # FC获取通道注意力权重，是具有全局信息的
         return x * y.expand_as(x) # 注意力作用每一个通道上
-
 class ECAAttention(nn.Module):
     def __init__(self, kernel_size=3):
         super().__init__()
@@ -68,7 +83,6 @@ class ECAAttention(nn.Module):
         y=self.sigmoid(y) # 生成权重表示: (B,1,C)
         y=y.permute(0,2,1).unsqueeze(-1)  # 重塑shape: (B,1,C)-->(B,C,1)-->(B,C,1,1)
         return x*y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
-
 class CMD(nn.Module):
     def __init__(self):
         super(CMD, self).__init__()
@@ -89,18 +103,20 @@ class CMD(nn.Module):
         F_fir = F_ir + F_dvi[:, :16, :, :]
         return F_fvi, F_fir
 
-class MF4(nn.Module):  # stereo attention block
+class MF5(nn.Module):  # stereo attention block
     def __init__(self, channels):
-        super(MF4, self).__init__()
+        super(MF5, self).__init__()
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
         self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         self.softmax = nn.Softmax(-1)
         # self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
-        self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
-        self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
-        self.se = SE_Block(64, 16)
+        self.bottleneck1 = DSConvBlock(channels, 16)
+        self.bottleneck2 = DSConvBlock(channels, 48)
         self.cmd = CMD()
+        # self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
+        # self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
+        self.se = SE_Block(64, 16)
         self.se_r = SE_Block(3, 3)
         self.se_i = SE_Block(3, 3)
         # self.se_i = SE_Block(1,1)
@@ -145,4 +161,7 @@ class MF4(nn.Module):  # stereo attention block
         out_RGB, out_IR = self.cmd(out_RGB, out_IR)
 
         out = self.se(torch.cat([out_RGB, out_IR], 1))
+        # import scipy.io as sio
+        # sio.savemat('features/output.mat', mdict={'data':out.cpu().numpy()})
+
         return out
