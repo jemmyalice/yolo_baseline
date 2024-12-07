@@ -12,3 +12,7 @@ from .SKnet4_fusion_changec import *
 from .SKnet5_fusion_nochangec_xyatten import *
 from .SKnet6_fusion import *
 from .SKnet7_fusion import *
+from .SKnet8_fusion import * # 这个MF9跳过了，后面一一对应
+from .SKnet8_fusion_checa import *
+from .SKnet9_fusion_checa import *
+from .SKnet8_fusion_checa1 import *
