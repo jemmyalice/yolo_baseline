@@ -16,3 +16,4 @@ from .SKnet8_fusion import * # 这个MF9跳过了，后面一一对应
 from .SKnet8_fusion_checa import *
 from .SKnet9_fusion_checa import *
 from .SKnet8_fusion_checa1 import *
+from .SKnet10_fusion import *
