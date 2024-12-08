@@ -112,7 +112,7 @@ class ECAAttention1(nn.Module):
         y1 = self.sigmoid(y1)  # 生成权重表示: (B,1,C)
         y1 = y1.permute(0, 2, 1).unsqueeze(-1)  # 重塑shape: (B,1,C)-->(B,C,1)-->(B,C,1,1)
 
-        y = self.norm(x * y.expand_as(x) + x * y1.expand_as(x))
+        y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1)
         return y  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 
@@ -140,13 +140,13 @@ class CMD(nn.Module):
 class MF10_1(nn.Module):  # stereo attention block
     def __init__(self, channels):
         super(MF10_1, self).__init__()
-        self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
+        self.mask_map_r = nn.Conv2d(channels*2, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
-        self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
+        self.mask_map_i = nn.Conv2d(channels*2, 1, 1, 1, 0, bias=True)
         self.softmax = nn.Softmax(-1)
         # self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
-        self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
-        self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
+        self.bottleneck1 = nn.Conv2d(channels*2, 16, 3, 1, 1, bias=False)
+        self.bottleneck2 = nn.Conv2d(channels*2, 48, 3, 1, 1, bias=False)
         self.se = ECAAttention()
         # self.cmd = CMD()
         self.se_r = ECAAttention1()
@@ -185,11 +185,11 @@ class MF10_1(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
-        x_mask_left = torch.mul(self.mask_map_r(x_left).repeat(1, 3, 1, 1), x_left)
+        x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
         x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
-        out_IR = self.bottleneck1(x_mask_right + x_right_ori)
-        out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
+        out_IR = self.bottleneck1(x_mask_right + x_right_ori.repeat(1, 2, 1, 1))
+        out_RGB = self.bottleneck2(x_mask_left + x_left_ori.repeat(1, 2, 1, 1))  # RGB
 
         #########start
         # out_RGB, out_IR = self.cmd(out_RGB, out_IR)
