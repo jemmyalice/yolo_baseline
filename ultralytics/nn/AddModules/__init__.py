@@ -17,3 +17,6 @@ from .SKnet8_fusion_checa import *
 from .SKnet9_fusion_checa import *
 from .SKnet8_fusion_checa1 import *
 from .SKnet10_fusion import *
+from .SKnet11_fusion import *
+from .SKnet11_fusion_withourcdm import *
+from .SKnet12_fusion import *
