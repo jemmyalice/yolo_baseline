@@ -185,8 +185,8 @@ class MF9(nn.Module):  # stereo attention block
         x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
         x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
-        out_IR = self.bottleneck1(x_mask_right + x_right_ori.repeat(1, 2, 1, 1))
-        out_RGB = self.bottleneck2(x_mask_left + x_left_ori.repeat(1, 2, 1, 1))  # RGB
+        out_IR = self.bottleneck1(x_mask_right + x_right_ori)
+        out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
 
         #########start
         out_RGB, out_IR = self.cmd(out_RGB, out_IR)
