@@ -117,7 +117,8 @@ class CMD(nn.Module):
         self.avg_pool2 = nn.AdaptiveAvgPool2d(1)  # Global Average Pooling
         self.eca1 = ECAAttention()
         self.eca2 = ECAAttention()
-        self.norm = nn.BatchNorm2d(16)
+        self.norm = nn.BatchNorm2d(48)
+        self.norm1 = nn.BatchNorm2d(16)
 
     def forward(self, F_vi, F_ir):
         # 计算视觉与红外特征差分
@@ -126,8 +127,9 @@ class CMD(nn.Module):
         # 计算红外与视觉特征差分
         sub_ir_vi = F_ir.repeat(1, 3, 1, 1) - F_vi
         F_dir = self.eca2(sub_ir_vi)
-        F_dvi1 = F_dvi[:, :16, :, :] + F_dvi[:, 16:32, :, :] + F_dvi[:, 32:48, :, :]
-        F_dvi1 = self.norm(F_dvi1)
+        F_dvi1 = (F_dvi[:, :16, :, :] + F_dvi[:, 16:32, :, :] + F_dvi[:, 32:48, :, :]) / 3
+        F_dir = self.norm(F_dir)
+        F_dvi1 = self.norm1(F_dvi1)
 
         # 生成融合特征
         F_fvi = F_vi + F_dir  # F_dir变为48
