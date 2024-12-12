@@ -1147,7 +1147,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(min(c2, max_channels) * width, 8)
             args = [c1, c1_i, c2]
-        elif m in {MF, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, MF9, MF10, MF10_1, MF11, MF12, MF13, MF13_1, MF14}:
+        elif m in {MF, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, MF9, MF10, MF10_1, MF11, MF12, MF13, MF13_1, MF14, MF_1}:
             c1 = ch[-1]
             c2 = 64
             args = args
