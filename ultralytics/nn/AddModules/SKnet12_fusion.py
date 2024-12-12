@@ -4,8 +4,10 @@ from torch import nn
 from torch.nn import init
 from collections import OrderedDict
 
-# 没有dwconv也没有cdm，需要直接取消注释就行了,这个CDM是eca版本的
-# 1eca
+#1. 以ECA版本为基础
+#2. 把双流ECA换为3和2两条分支的ECA1，用concat+0.5处理
+#3. 在Concat前使用ECA版本的CDM进行处理
+
 __all__ = ["MF14"]
 class DSConvBlock(nn.Module):
     """

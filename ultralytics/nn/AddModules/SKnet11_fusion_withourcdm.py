@@ -79,7 +79,7 @@ class ECAAttention1(nn.Module):
         self.conv1 = nn.Conv1d(1, 1, kernel_size=kernel_size1, padding=(kernel_size - 1) // 2)
         self.sigmoid1 = nn.Sigmoid()
 
-        self.norm = nn.BatchNorm2d(3)
+        self.norm = nn.BatchNorm2d(6)
 
     def init_weights(self):
         for m in self.modules():
@@ -109,7 +109,7 @@ class ECAAttention1(nn.Module):
         y1 = self.sigmoid(y1)  # 生成权重表示: (B,1,C)
         y1 = y1.permute(0, 2, 1).unsqueeze(-1)  # 重塑shape: (B,1,C)-->(B,C,1)-->(B,C,1,1)
 
-        y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1)
+        y = self.norm(torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1))
         return y  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class CMD(nn.Module):
@@ -143,7 +143,7 @@ class MF13_1(nn.Module):  # stereo attention block
         self.bottleneck1 = nn.Conv2d(channels*2, 16, 3, 1, 1, bias=False)
         self.bottleneck2 = nn.Conv2d(channels*2, 48, 3, 1, 1, bias=False)
         self.se = ECAAttention()
-        self.cmd = CMD()
+        # self.cmd = CMD()
         self.se_r = ECAAttention1()
         self.se_i = ECAAttention1()
         # self.se_i = SE_Block(1,1)
