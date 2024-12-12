@@ -20,3 +20,4 @@ from .SKnet10_fusion import *
 from .SKnet11_fusion import *
 from .SKnet11_fusion_withourcdm import *
 from .SKnet12_fusion import *
+from .Fusion_1212 import *
