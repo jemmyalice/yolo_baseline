@@ -3,10 +3,16 @@ import torch
 from torch import nn
 from torch.nn import init
 from collections import OrderedDict
-
 # 没有dwconv也没有cdm，需要直接取消注释就行了,这个CDM是eca版本的
-# 1eca
-__all__ = ["MF13"]
+# 3eca
+__all__ = ["MF_2"]
+def dsconv_3x3(in_channel, out_channel):
+    return nn.Sequential(
+        nn.Conv2d(in_channel, in_channel, kernel_size=3, stride=1, padding=1, groups=in_channel),
+        nn.Conv2d(in_channel, out_channel, kernel_size=1, stride=1, padding=0, groups=1),
+        nn.BatchNorm2d(out_channel),
+        nn.ReLU(inplace=True)
+    )
 
 class SE_Block(nn.Module):
     def __init__(self, ch_in, reduction=16):
@@ -80,7 +86,6 @@ class ECAAttention1(nn.Module):
         self.sigmoid1 = nn.Sigmoid()
 
         self.norm = nn.BatchNorm2d(3)
-
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -111,29 +116,11 @@ class ECAAttention1(nn.Module):
         y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1)
         return y  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
-class CMD(nn.Module):
-    def __init__(self):
-        super(CMD, self).__init__()
-        self.avg_pool1 = nn.AdaptiveAvgPool2d(1)  # (1, 3, 4, 4) ->(1, 3, 1, 1)
-        self.avg_pool2 = nn.AdaptiveAvgPool2d(1)  # Global Average Pooling
-        self.eca1 = ECAAttention()
-        self.eca2 = ECAAttention()
-
-    def forward(self, F_vi, F_ir):
-        # 计算视觉与红外特征差分
-        sub_vi_ir = F_vi - F_ir.repeat(1, 3, 1, 1)
-        F_dvi = self.eca1(sub_vi_ir)
-        # 计算红外与视觉特征差分
-        sub_ir_vi = F_ir.repeat(1, 3, 1, 1) - F_vi
-        F_dir = self.eca2(sub_ir_vi)
-        # 生成融合特征
-        F_fvi = F_vi + F_dir  # F_dir变为48
-        F_fir = F_ir + F_dvi[:, :16, :, :]
-        return F_fvi, F_fir
-
-class MF13(nn.Module):  # stereo attention block
+class MF_2(nn.Module):  # stereo attention block
     def __init__(self, channels):
-        super(MF13, self).__init__()
+        super(MF_2, self).__init__()
+        self.catconvA = dsconv_3x3(channels * 4, channels*2)
+        self.catconvB = dsconv_3x3(channels * 4, channels*2)
         self.mask_map_r = nn.Conv2d(channels*2, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
         self.mask_map_i = nn.Conv2d(channels*2, 1, 1, 1, 0, bias=True)
@@ -142,7 +129,6 @@ class MF13(nn.Module):  # stereo attention block
         self.bottleneck1 = nn.Conv2d(channels*2, 16, 3, 1, 1, bias=False)
         self.bottleneck2 = nn.Conv2d(channels*2, 48, 3, 1, 1, bias=False)
         self.se = ECAAttention()
-        self.cmd = CMD()
         self.se_r = ECAAttention1()
         self.se_i = ECAAttention1()
         # self.se_i = SE_Block(1,1)
@@ -179,14 +165,19 @@ class MF13(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
-        x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
-        x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
+        x_diff = x_right - x_left
+        x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
+        x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
+        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 6, 1, 1), x_left)
+        x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
+        # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
+        # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
         out_IR = self.bottleneck1(x_mask_right + x_right_ori.repeat(1, 2, 1, 1))
         out_RGB = self.bottleneck2(x_mask_left + x_left_ori.repeat(1, 2, 1, 1))  # RGB
 
         #########start
-        out_RGB, out_IR = self.cmd(out_RGB, out_IR)
+        # out_RGB, out_IR = self.cmd(out_RGB, out_IR)
 
         out = self.se(torch.cat([out_RGB, out_IR], 1))
         return out

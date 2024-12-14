@@ -40,7 +40,6 @@ class SE_Block(nn.Module):
         y = self.fc(y).view(b, c, 1, 1)  # FC获取通道注意力权重，是具有全局信息的
         return x * y.expand_as(x)  # 注意力作用每一个通道上
 
-
 class ECAAttention(nn.Module):
     def __init__(self, kernel_size=3):
         super().__init__()
@@ -69,7 +68,6 @@ class ECAAttention(nn.Module):
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
         y = y.permute(0, 2, 1).unsqueeze(-1)  # 重塑shape: (B,1,C)-->(B,C,1)-->(B,C,1,1)
         return x * y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
-
 
 class ECAAttention1(nn.Module):
     def __init__(self, kernel_size=3, kernel_size1=2):
@@ -115,7 +113,6 @@ class ECAAttention1(nn.Module):
         y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1)
         return y  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
-
 class CMD(nn.Module):
     def __init__(self):
         super(CMD, self).__init__()
@@ -135,7 +132,6 @@ class CMD(nn.Module):
         F_fvi = F_vi + F_dir  # F_dir变为48
         F_fir = F_ir + F_dvi[:, :16, :, :]
         return F_fvi, F_fir
-
 
 class MF10_1(nn.Module):  # stereo attention block
     def __init__(self, channels):

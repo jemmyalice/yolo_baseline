@@ -35,7 +35,6 @@ class TFF(nn.Module):
         self.convA = nn.Conv2d(in_channel, 1, 1)
         self.convB = nn.Conv2d(in_channel, 1, 1)
         self.sigmoid = nn.Sigmoid()
-
     def forward(self, xA, xB):
         x_diff = xA - xB  # 通过相减获得粗略的变化表示: (B,C,H,W)
 
