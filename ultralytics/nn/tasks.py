@@ -973,29 +973,42 @@ def attempt_load_weights(weights, device=None, inplace=True, fuse=False):
 
 
 def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
-    """Loads a single model weights."""
-    ckpt, weight = torch_safe_load(weight)  # load ckpt
-    args = {**DEFAULT_CFG_DICT, **(ckpt.get("train_args", {}))}  # combine model and default args, preferring model args
-    model = (ckpt.get("ema") or ckpt["model"]).to(device).float()  # FP32 model
+    """
+    加载单个模型权重文件并准备模型用于推理或进一步使用。
 
-    # Model compatibility updates
-    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # attach args to model
-    model.pt_path = weight  # attach *.pt file path to model
-    model.task = guess_model_task(model)
-    if not hasattr(model, "stride"):
+    参数:
+        weight (str): 模型权重文件的路径 (.pt)。
+        device (torch.device, optional): 加载模型的设备（例如 'cpu' 或 'cuda'）。
+        inplace (bool, optional): 是否在某些模块上执行就地操作（默认值为 True）。
+        fuse (bool, optional): 是否融合 Conv2d 和 BatchNorm2d 层以加速推理（默认值为 False）。
+
+    返回:
+        model (torch.nn.Module): 加载后的模型，已准备好进行评估。
+        ckpt (dict): 包含模型状态和元数据的检查点字典。
+    """
+    # 安全加载权重文件中的检查点数据
+    ckpt, weight = torch_safe_load(weight)  # 加载权重文件并返回其内容
+    # 将默认配置与检查点中存储的训练参数合并
+    args = {**DEFAULT_CFG_DICT, **(ckpt.get("train_args", {}))}  # 优先使用模型特定参数覆盖默认参数
+    # 从检查点中提取模型；如果可用，优先使用 EMA 权重
+    model = (ckpt.get("ema") or ckpt["model"]).to(device).float()  # 转换模型为 FP32 并移动到指定设备
+    # 更新模型的兼容性属性
+    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # 筛选并将相关参数附加到模型上
+    model.pt_path = weight  # 将权重文件路径附加到模型
+    model.task = guess_model_task(model)  # 确定模型设计的任务（例如检测、分割）
+    if not hasattr(model, "stride"):  # 如果未设置 stride，设置默认 stride
         model.stride = torch.tensor([32.0])
-
-    model = model.fuse().eval() if fuse and hasattr(model, "fuse") else model.eval()  # model in eval mode
-
-    # Module updates
+    # 可选地融合层并将模型设置为评估模式
+    model = model.fuse().eval() if fuse and hasattr(model, "fuse") else model.eval()
+    # 更新特定模块的属性以确保兼容性
     for m in model.modules():
-        if hasattr(m, "inplace"):
+        if hasattr(m, "inplace"):  # 对支持的层更新 'inplace' 属性
             m.inplace = inplace
         elif isinstance(m, nn.Upsample) and not hasattr(m, "recompute_scale_factor"):
-            m.recompute_scale_factor = None  # torch 1.11.0 compatibility
-
-    # Return model and ckpt
+            m.recompute_scale_factor = None  # 兼容 torch 1.11.0
+    # 返回模型和检查点
     return model, ckpt
+
 
 
 def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
@@ -1147,7 +1160,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(min(c2, max_channels) * width, 8)
             args = [c1, c1_i, c2]
-        elif m in {MF, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, MF9, MF10, MF10_1, MF11, MF12, MF13, MF13_1, MF14, MF_1, MF_2}:
+        elif m in {MF, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, MF9, MF10, MF10_1, MF11, MF12, MF13, MF13_1, MF14, MF_1, MF_2, MF_3}:
             c1 = ch[-1]
             c2 = 64
             args = args
