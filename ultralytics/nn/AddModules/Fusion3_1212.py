@@ -167,7 +167,7 @@ class MF_3y(nn.Module):  # stereo attention block
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
         x_diff = x_right - x_left
-        x_diff1 = abs(x_left - x_right)
+        x_diff1 = x_left - x_right
         x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
         x_diffB = self.catconvB((torch.cat([x_diff1, x_right], dim=1)))
         x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 6, 1, 1), x_left)
