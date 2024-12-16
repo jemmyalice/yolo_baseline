@@ -23,3 +23,4 @@ from .SKnet12_fusion import *
 from .Fusion_1212 import *
 from .Fusion1_1212 import *
 from .Fusion2_1212 import *
+from .Fusion3_1212 import *
