@@ -25,3 +25,5 @@ from .Fusion1_1212 import *
 from .Fusion2_1212 import *
 from .Fusion3_1212 import *
 from .Fusion3_1_1212 import *
+from .Fusion4_1212 import *
+from .Fusion5_1212 import *
