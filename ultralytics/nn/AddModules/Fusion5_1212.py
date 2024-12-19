@@ -76,18 +76,12 @@ class ECAAttention(nn.Module):
         return x * y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class ECAAttention1(nn.Module):
-    def __init__(self, ch_in, kernel_size = 3):
+    def __init__(self, ch_in, ch_mid = 32):
         super().__init__()
         self.gap = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(ch_in, ch_in, bias=False)
+        self.fc = nn.Linear(ch_in, ch_mid, bias=False)
+        self.fc1 = nn.Linear(ch_mid, ch_in, bias=False)
         self.sigmoid = nn.Sigmoid()
-        self.gap12 = nn.AdaptiveAvgPool2d(1)
-        self.fc12 = nn.Linear(ch_in-1, ch_in-1, bias=False)
-        self.gap13 = nn.AdaptiveAvgPool2d(1)
-        self.fc13 = nn.Linear(ch_in-1, ch_in-1, bias=False)
-        self.gap23 = nn.AdaptiveAvgPool2d(1)
-        self.fc23 = nn.Linear(ch_in-1, ch_in-1, bias=False)
-        self.sigmoid1 = nn.Sigmoid()
 
 
     def init_weights(self):
@@ -107,37 +101,24 @@ class ECAAttention1(nn.Module):
     def forward(self, x):
         b, c, _, _ = x.size()
         y = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y = self.fc(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y = self.fc(y)
+        y = self.fc1(y).view(b, c, 1, 1)
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
-        y12 = self.gap12(x[:, [0, 1], :, :]).view(b, c-1)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y12 = self.fc12(y12).view(b, c-1, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y13 = self.gap13(x[:, [0, 2], :, :]).view(b, c-1)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y13 = self.fc13(y13).view(b, c-1, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y23 = self.gap23(x[:, [1, 2], :, :]).view(b, c-1)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y23 = self.fc23(y23).view(b, c-1, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y_1 = 0.5 * y12[:b, 0] + 0.5 * y13[:b, 0]
-        y_2 = 0.5 * y12[:b, 1] + 0.5 * y23[:b, 0]
-        y_3 = 0.5 * y13[:b, 1] + 0.5 * y23[:b, 1]
-        y1 = torch.stack([y_1, y_2, y_3]).view(b, c, 1, 1)
-        y1 = self.sigmoid1(y1)  # 生成权重表示: (B,1,C)
-
-
-        y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim = 1)
-        return y # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
+        return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class MF_5(nn.Module):  # stereo attention block
     def __init__(self, channels):
         super(MF_5, self).__init__()
-        self.catconvA = nn.Conv2d(channels * 4, channels * 2, 3, 1, 1, bias=True)
-        self.catconvB = nn.Conv2d(channels * 4, channels * 2, 3, 1, 1, bias=True)
-        self.mask_map_r = nn.Conv2d(channels * 2, 1, 1, 1, 0, bias=True)
+        self.catconvA = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
+        self.catconvB = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
+        self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
-        self.mask_map_i = nn.Conv2d(channels * 2, 1, 1, 1, 0, bias=True)
+        self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         self.softmax = nn.Softmax(-1)
         # self.bottleneck1 = nn.Conv2d(1, 16, 3, 1, 1, bias=False)
-        self.bottleneck1 = nn.Conv2d(channels * 2, 16, 3, 1, 1, bias=False)
-        self.bottleneck2 = nn.Conv2d(channels * 2, 48, 3, 1, 1, bias=False)
+        self.bottleneck1 = nn.Conv2d(channels, 16, 3, 1, 1, bias=False)
+        self.bottleneck2 = nn.Conv2d(channels, 48, 3, 1, 1, bias=False)
         self.se = ECAAttention()
         self.se_r = ECAAttention1(3)
         self.se_i = ECAAttention1(3)
@@ -178,13 +159,13 @@ class MF_5(nn.Module):  # stereo attention block
         x_diff = x_right - x_left
         x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
         x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
-        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 6, 1, 1), x_left)
+        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
-        out_IR = self.bottleneck1(x_mask_right + x_right_ori.repeat(1, 2, 1, 1))
-        out_RGB = self.bottleneck2(x_mask_left + x_left_ori.repeat(1, 2, 1, 1))  # RGB
+        out_IR = self.bottleneck1(x_mask_right + x_right_ori)
+        out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
 
         #########start
         # out_RGB, out_IR = self.cmd(out_RGB, out_IR)
