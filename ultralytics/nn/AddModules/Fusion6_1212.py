@@ -85,7 +85,6 @@ class ECAAttention1(nn.Module):
         self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         self.gap1 = nn.AdaptiveAvgPool2d(1)
 
-
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -106,7 +105,7 @@ class ECAAttention1(nn.Module):
         y = self.fc(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y1 = self.gap1(y1).view(b, c, 1, 1)
-        y = y * 0.8 + y1 * 0.2
+        y = y * 0.5 + y1 * 0.5
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)

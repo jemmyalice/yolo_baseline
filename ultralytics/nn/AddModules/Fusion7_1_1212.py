@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 # 没有dwconv也没有cdm，需要直接取消注释就行了,这个CDM是eca版本的
 # 3eca
-__all__ = ["MF_7"]
+__all__ = ["MF_7_1"]
 # ds 换为conv
 def dsconv_3x3(in_channel, out_channel):
     return nn.Sequential(
@@ -77,14 +77,14 @@ class ECAAttention(nn.Module):
         return x * y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class ECAAttention1(nn.Module):
-    def __init__(self, ch_in):
+    def __init__(self, kernel_size = 3, ch_in = 3):
         super().__init__()
         # self.gap = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Linear(ch_in, ch_in, bias=False)
+        self.conv = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         # self.sigmoid = nn.Sigmoid()
 
         # self.gap1 = nn.AdaptiveMaxPool2d((1, 1))
-        self.fc1 = nn.Linear(ch_in, ch_in, bias=False)
+        self.conv1 = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         # self.sigmoid1 = nn.Sigmoid()
 
     def init_weights(self):
@@ -105,26 +105,26 @@ class ECAAttention1(nn.Module):
         b, c, _, _ = x.size()
         y = F.adaptive_avg_pool2d(x, output_size=(1, 1)).view(b, c)
         # y = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y = self.fc(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y = self.conv(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y = torch.sigmoid(y)  # 生成权重表示: (B,1,C)
         # y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
 
         y1 = F.adaptive_max_pool2d(x, output_size=(1, 1)).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
         # y1 = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y1 = self.fc1(y1).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y1 = self.conv1(y1).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y1 = torch.sigmoid(y1)  # 生成权重表示: (B,1,C)
         # y1 = self.sigmoid(y1)  # 生成权重表示: (B,1,C)
 
-        y = y * 0.8 + y1 * 0.2 # 这是不同比例
-        # y = y + y1
+        # y = y * 0.8 + y1 * 0.2 # 这是不同比例
+        y = y + y1
 
         # y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim=1) # 这是concat
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
-class MF_7(nn.Module):  # stereo attention block
+class MF_7_1(nn.Module):  # stereo attention block
     def __init__(self, channels):
-        super(MF_7, self).__init__()
+        super(MF_7_1, self).__init__()
         self.catconvA = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.catconvB = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
