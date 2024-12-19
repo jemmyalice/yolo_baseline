@@ -103,21 +103,21 @@ class ECAAttention1(nn.Module):
 
     def forward(self, x):
         b, c, _, _ = x.size()
-        y = F.adaptive_avg_pool2d(x, output_size=(1, 1)).view(b, c)
-        # y = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y = self.conv(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y = F.adaptive_avg_pool2d(x, output_size=(1, 1))
+        y = y.squeeze(-1).permute(0, 2, 1)  # 将通道描述符去掉一维,便于在通道上执行卷积操作:(B,C,1,1)-->(B,C,1)-->(B,1,C)
+        y = self.conv(y)
         y = torch.sigmoid(y)  # 生成权重表示: (B,1,C)
         # y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
-
-        y1 = F.adaptive_max_pool2d(x, output_size=(1, 1)).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        # y1 = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y1 = self.conv1(y1).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y1 = F.adaptive_max_pool2d(x, output_size=(1, 1))
+        y1 = y1.squeeze(-1).permute(0, 2, 1)
+        y1 = self.conv1(y1)
         y1 = torch.sigmoid(y1)  # 生成权重表示: (B,1,C)
         # y1 = self.sigmoid(y1)  # 生成权重表示: (B,1,C)
 
         # y = y * 0.8 + y1 * 0.2 # 这是不同比例
         y = y + y1
+        y = y.permute(0, 2, 1).unsqueeze(-1)
 
         # y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim=1) # 这是concat
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
