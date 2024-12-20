@@ -81,10 +81,11 @@ class ECAAttention1(nn.Module):
         super().__init__()
         # self.gap = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(ch_in, ch_in, bias=False)
+        # self.fc = nn.Linear(ch_in, ch_in, bias=True)
         # self.sigmoid = nn.Sigmoid()
 
         # self.gap1 = nn.AdaptiveMaxPool2d((1, 1))
-        self.fc1 = nn.Linear(ch_in, ch_in, bias=False)
+        # self.fc1 = nn.Linear(ch_in, ch_in, bias=False)
         # self.sigmoid1 = nn.Sigmoid()
 
     def init_weights(self):
@@ -112,12 +113,11 @@ class ECAAttention1(nn.Module):
 
         y1 = F.adaptive_max_pool2d(x, output_size=(1, 1)).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
         # y1 = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y1 = self.fc1(y1).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y1 = self.fc(y1).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y1 = torch.sigmoid(y1)  # 生成权重表示: (B,1,C)
         # y1 = self.sigmoid(y1)  # 生成权重表示: (B,1,C)
 
-        y = y * 0.8 + y1 * 0.2 # 这是不同比例
-        # y = y + y1
+        y = y + y1
 
         # y = torch.concat([x * y.expand_as(x), x * y1.expand_as(x)], dim=1) # 这是concat
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
