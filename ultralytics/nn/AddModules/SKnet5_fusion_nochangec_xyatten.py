@@ -139,19 +139,20 @@ class CoordAtt(nn.Module):
 class CMD(nn.Module):
     def __init__(self, channels):
         super(CMD, self).__init__()
-        self.co1 = CoordAtt(channels, channels)
+        # self.co1 = CoordAtt(channels, channels)
         self.co2 = CoordAtt(channels, channels)
 
     def forward(self, F_vi, F_ir):
         # 计算视觉与红外特征差分
-        sub_vi_ir =F_vi - F_ir.repeat(1, 3, 1, 1)
-        F_dvi = self.co1(sub_vi_ir)
+        # sub_vi_ir =F_vi - F_ir.repeat(1, 3, 1, 1)
+        # F_dvi = self.co1(sub_vi_ir)
         # 计算红外与视觉特征差分
         sub_ir_vi = F_ir.repeat(1, 3, 1, 1) - F_vi
         F_dir = self.co2(sub_ir_vi)
         # 生成融合特征
         F_fvi = F_vi + F_dir #  F_dir变为48
-        F_fir = F_ir + F_dvi[:, :16, :, :]
+        # F_fir = F_ir + F_dvi[:, :16, :, :]
+        F_fir = F_ir + F_dir[:, :16, :, :]
         return F_fvi, F_fir
 
 class MF6(nn.Module):  # stereo attention block
