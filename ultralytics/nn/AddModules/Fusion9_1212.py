@@ -83,14 +83,14 @@ class ECAAttention1(nn.Module):
         self.fc = nn.Linear(ch_in, ch_in, bias=False)
         self.sigmoid = nn.Sigmoid()
 
-        self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
-        self.gap1 = nn.AdaptiveAvgPool2d(1)
-
-        # self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
+        # self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         # self.gap1 = nn.AdaptiveAvgPool2d(1)
 
-        self.conv2 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size2, padding=(kernel_size2 - 1) // 2)
-        self.gap2 = nn.AdaptiveAvgPool2d(1)
+        self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
+        self.gap11 = nn.AdaptiveAvgPool2d(1)
+
+        # self.conv2 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size2, padding=(kernel_size2 - 1) // 2)
+        # self.gap2 = nn.AdaptiveAvgPool2d(1)
 
     def init_weights(self):
         for m in self.modules():
@@ -110,13 +110,13 @@ class ECAAttention1(nn.Module):
         b, c, _, _ = x.size()
         y = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
         y = self.fc(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y1 = self.gap1(y1).view(b, c, 1, 1)
-        # y2 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        # y2 = self.gap1(y2).view(b, c, 1, 1)
-        y3 = self.conv2(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y3 = self.gap2(y3).view(b, c, 1, 1)
-        y = y + y1 + y3
+        # y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        # y1 = self.gap1(y1).view(b, c, 1, 1)
+        y2 = self.conv1(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y2 = self.gap11(y2).view(b, c, 1, 1)
+        # y3 = self.conv2(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        # y3 = self.gap2(y3).view(b, c, 1, 1)
+        y = y + y2
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
