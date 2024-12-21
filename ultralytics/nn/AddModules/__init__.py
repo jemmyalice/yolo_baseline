@@ -35,3 +35,7 @@ from .Fusion8_1212 import *
 from .Fusion9_1212 import *
 from .Fusion10_1212 import *
 from .Fusion11_1212 import *
+from .Fusion12_1212 import *
+from .Fusion13_1212 import *
+from .Fusion14_1212 import *
+from .Fusion15_1212 import *
