@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 # 没有dwconv也没有cdm，需要直接取消注释就行了,这个CDM是eca版本的
 # 3eca
-__all__ = ["MF_15"]
+__all__ = ["MF_16"]
 # ds 换为conv
 def dsconv_3x3(in_channel, out_channel):
     return nn.Sequential(
@@ -119,14 +119,13 @@ class ECAAttention1(nn.Module):
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
-class MF_15(nn.Module):  # stereo attention block
+class MF_16(nn.Module):  # stereo attention block
     def __init__(self, channels):
-        super(MF_15, self).__init__()
+        super(MF_16, self).__init__()
         self.catconvA = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.catconvB = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
+        self.diffatten = ECAAttention1(3)
 
-        self.catconvA1 = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
-        self.catconvB1 = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
         self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
@@ -180,8 +179,9 @@ class MF_15(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
         x_diff1 = x_mask_right - x_mask_left
-        x_mask_left = self.catconvA1((torch.cat([x_diff1, x_left], dim=1)))
-        x_mask_right = self.catconvB1((torch.cat([x_diff1, x_right], dim=1)))
+        x_diff1 = self.diffatten(x_diff1)
+        x_mask_left = x_mask_left + x_diff1
+        x_mask_right = x_mask_right + x_diff1
 
         out_IR = self.bottleneck1(x_mask_right + x_right_ori)
         out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
