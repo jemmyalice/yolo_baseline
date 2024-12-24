@@ -39,3 +39,4 @@ from .Fusion12_1212 import *
 from .Fusion13_1212 import *
 from .Fusion14_1212 import *
 from .Fusion15_1212 import *
+from .Fusion16_1212 import *
