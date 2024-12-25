@@ -124,9 +124,6 @@ class MF_15(nn.Module):  # stereo attention block
         super(MF_15, self).__init__()
         self.catconvA = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.catconvB = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
-
-        self.catconvA1 = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
-        self.catconvB1 = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
         # self.mask_map_i = nn.Conv2d(1, 1, 1, 1, 0, bias=True)
         self.mask_map_i = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
@@ -172,16 +169,13 @@ class MF_15(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
-        x_diff = x_right - x_left
-        x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
-        x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
-        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
-        x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
-        # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
-        # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
-        x_diff1 = x_mask_right - x_mask_left
-        x_mask_left = self.catconvA1((torch.cat([x_diff1, x_left], dim=1)))
-        x_mask_right = self.catconvB1((torch.cat([x_diff1, x_right], dim=1)))
+        # x_diff = x_right - x_left
+        # x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
+        # x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
+        # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
+        # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
+        x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
+        x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
         out_IR = self.bottleneck1(x_mask_right + x_right_ori)
         out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
