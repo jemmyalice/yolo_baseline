@@ -40,3 +40,7 @@ from .Fusion13_1212 import *
 from .Fusion14_1212 import *
 from .Fusion15_1212 import *
 from .Fusion16_1212 import *
+from .Fusion17_1212 import *
+from .Fusion18_1212 import *
+from .Fusion19_1212 import *
+from .Fusion20_1212 import *

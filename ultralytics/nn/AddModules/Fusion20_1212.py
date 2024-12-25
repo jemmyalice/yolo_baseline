@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 # 没有dwconv也没有cdm，需要直接取消注释就行了,这个CDM是eca版本的
 # 3eca
-__all__ = ["MF_15"]
+__all__ = ["MF_20"]
 # ds 换为conv
 def dsconv_3x3(in_channel, out_channel):
     return nn.Sequential(
@@ -84,11 +84,9 @@ class ECAAttention1(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
         self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
-        self.act = nn.ReLU(inplace=True)
         self.gap1 = nn.AdaptiveAvgPool2d(1)
 
         self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
-        self.act1 = nn.ReLU(inplace=True)
         self.gap11 = nn.AdaptiveAvgPool2d(1)
 
     def init_weights(self):
@@ -111,9 +109,9 @@ class ECAAttention1(nn.Module):
         y = y.squeeze(-1).permute(0, 2, 1)  # 将通道描述符去掉一维,便于在通道上执行卷积操作:(B,C,1,1)-->(B,C,1)-->(B,1,C)
         y = self.conv1d(y)
         y = y.permute(0, 2, 1).unsqueeze(-1)
-        y1 = self.act(self.conv(x))  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y1 = self.gap1(y1).view(b, c, 1, 1)
-        y2 = self.act1(self.conv1(x))  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+        y2 = self.conv1(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y2 = self.gap11(y2).view(b, c, 1, 1)
 
         y = y + y1 + y2
@@ -121,9 +119,9 @@ class ECAAttention1(nn.Module):
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
-class MF_15(nn.Module):  # stereo attention block
+class MF_20(nn.Module):  # stereo attention block
     def __init__(self, channels):
-        super(MF_15, self).__init__()
+        super(MF_20, self).__init__()
         self.catconvA = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.catconvB = nn.Conv2d(channels * 2, channels, 3, 1, 1, bias=True)
         self.mask_map_r = nn.Conv2d(channels, 1, 1, 1, 0, bias=True)
@@ -171,13 +169,13 @@ class MF_15(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
-        # x_diff = x_right - x_left
-        # x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
-        # x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
-        # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
-        # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
-        x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
-        x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
+        x_diff = x_right - x_left
+        x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
+        x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
+        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
+        x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
+        # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
+        # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
         out_IR = self.bottleneck1(x_mask_right + x_right_ori)
         out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
