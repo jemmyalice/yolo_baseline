@@ -86,6 +86,9 @@ class ECAAttention1(nn.Module):
         self.gap1 = nn.AdaptiveAvgPool2d(1)
         self.conv1d1 = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
 
+        self.weight1 = nn.Parameter(torch.tensor(0.5))  # 对应于 y1 的权重
+        self.weight2 = nn.Parameter(torch.tensor(0.5))  # 对应于 y1 的权重
+
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -113,7 +116,7 @@ class ECAAttention1(nn.Module):
         y1 = self.conv1d1(y1)
         y1 = y1.permute(0, 2, 1).unsqueeze(-1)
 
-        y = y + y1
+        y = y * self.weight1 + y1 * self.weight2
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
