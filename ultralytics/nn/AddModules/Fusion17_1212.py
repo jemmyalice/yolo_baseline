@@ -77,7 +77,7 @@ class ECAAttention(nn.Module):
         return x * y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class ECAAttention1(nn.Module):
-    def __init__(self, ch_in, kernel_size = 3, kernel_size1 = 1):
+    def __init__(self, ch_in, kernel_size=3, kernel_size1=1):
         super().__init__()
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.conv1d = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
@@ -88,6 +88,12 @@ class ECAAttention1(nn.Module):
 
         self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
         self.gap11 = nn.AdaptiveAvgPool2d(1)
+
+        # Batch Normalization
+        self.bn1 = nn.BatchNorm2d(ch_in)
+        self.bn2 = nn.BatchNorm2d(ch_in)
+
+        self.init_weights()
 
     def init_weights(self):
         for m in self.modules():
@@ -102,22 +108,25 @@ class ECAAttention1(nn.Module):
                 init.normal_(m.weight, std=0.001)
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
+
     # 输出只相加了
     def forward(self, x):
         b, c, _, _ = x.size()
-        y = self.gap(x) # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
-        y = y.squeeze(-1).permute(0, 2, 1)  # 将通道描述符去掉一维,便于在通道上执行卷积操作:(B,C,1,1)-->(B,C,1)-->(B,1,C)
+        y = self.gap(x)
+        y = y.squeeze(-1).permute(0, 2, 1)
         y = self.conv1d(y)
         y = y.permute(0, 2, 1).unsqueeze(-1)
-        y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+
+        y1 = self.bn1(self.conv(x)) #3
         y1 = self.gap1(y1).view(b, c, 1, 1)
-        y2 = self.conv1(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
+
+        y2 = self.bn2(self.conv1(x)) #1
         y2 = self.gap11(y2).view(b, c, 1, 1)
 
-        y = y + y1*0.7 + y2*0.3
-        y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
+        y = y + y1 * 0.7 + y2 * 0.3
+        y = self.sigmoid(y)
 
-        return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
+        return x * y.expand_as(x)  # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
 
 class MF_17(nn.Module):  # stereo attention block
     def __init__(self, channels):

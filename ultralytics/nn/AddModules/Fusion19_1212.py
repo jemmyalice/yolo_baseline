@@ -83,11 +83,8 @@ class ECAAttention1(nn.Module):
         self.conv1d = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         self.sigmoid = nn.Sigmoid()
 
-        self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
         self.gap1 = nn.AdaptiveAvgPool2d(1)
-
-        self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
-        self.gap11 = nn.AdaptiveAvgPool2d(1)
+        self.conv1d1 = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
 
     def init_weights(self):
         for m in self.modules():
@@ -109,12 +106,14 @@ class ECAAttention1(nn.Module):
         y = y.squeeze(-1).permute(0, 2, 1)  # 将通道描述符去掉一维,便于在通道上执行卷积操作:(B,C,1,1)-->(B,C,1)-->(B,1,C)
         y = self.conv1d(y)
         y = y.permute(0, 2, 1).unsqueeze(-1)
-        y1 = self.conv(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y1 = self.gap1(y1).view(b, c, 1, 1)
-        y2 = self.conv1(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
-        y2 = self.gap11(y2).view(b, c, 1, 1)
 
-        y = y + y1 + y2
+        x1 = x[:, [1, 0, 2], :, :]  # 通过索引交换通道
+        y1 = self.gap1(x1)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
+        y1 = y1.squeeze(-1).permute(0, 2, 1)  # 将通道描述符去掉一维,便于在通道上执行卷积操作:(B,C,1,1)-->(B,C,1)-->(B,1,C)
+        y1 = self.conv1d1(y1)
+        y1 = y1.permute(0, 2, 1).unsqueeze(-1)
+
+        y = y + y1
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)
