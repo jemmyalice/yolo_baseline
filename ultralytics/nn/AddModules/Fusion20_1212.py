@@ -88,9 +88,9 @@ class ECAAttention1(nn.Module):
 
         self.gap2 = nn.AdaptiveAvgPool2d(1)
         self.conv1d2 = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
-        self.weight1 = nn.Parameter(torch.tensor(1))  # 对应于 y1 的权重
-        self.weight2 = nn.Parameter(torch.tensor(1))  # 对应于 y2 的权重
-        self.weight3 = nn.Parameter(torch.tensor(1))  # 对应于 y2 的权重
+        self.weight1 = nn.Parameter(torch.tensor(1.0))  # 对应于 y1 的权重
+        self.weight2 = nn.Parameter(torch.tensor(1.0))  # 对应于 y2 的权重
+        self.weight3 = nn.Parameter(torch.tensor(1.0))  # 对应于 y2 的权重
 
 
     def init_weights(self):
