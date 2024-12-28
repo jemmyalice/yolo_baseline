@@ -46,6 +46,8 @@ from .Fusion19_1212 import *
 from .Fusion20_1212 import *
 from .Fusion21_1212 import *
 from .Fusion22_1212 import *
+from .Fusion22_1_1212 import *
+from .Fusion22_2_1212 import *
 from .Fusion23_1212 import *
 from .Fusion24_1212 import *
 from .Fusion25_1212 import *

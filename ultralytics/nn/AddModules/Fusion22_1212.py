@@ -89,8 +89,8 @@ class ECAAttention1(nn.Module):
         self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
         self.gap11 = nn.AdaptiveAvgPool2d(1)
 
-        self.weight1 = nn.Parameter(torch.tensor(0.2))  # 对应于 y1 的权重
-        self.weight2 = nn.Parameter(torch.tensor(0.3))  # 对应于 y2 的权重
+        self.weight1 = nn.Parameter(torch.tensor(0.5))  # 对应于 y1 的权重
+        self.weight2 = nn.Parameter(torch.tensor(0.5))  # 对应于 y2 的权重
 
         # Batch Normalization
         self.bn1 = nn.BatchNorm2d(ch_in)

@@ -80,7 +80,7 @@ class ECAAttention1(nn.Module):
     def __init__(self, ch_in, kernel_size = 3, kernel_size1 = 1):
         super().__init__()
         self.gap = nn.AdaptiveAvgPool2d(1)
-        self.conv1d = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
+        self.fc = nn.Linear(ch_in, ch_in, bias=False)
         self.sigmoid = nn.Sigmoid()
 
         self.conv = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size, padding=(kernel_size - 1) // 2)
@@ -89,8 +89,8 @@ class ECAAttention1(nn.Module):
         self.conv1 = nn.Conv2d(ch_in, ch_in, kernel_size=kernel_size1, padding=(kernel_size1 - 1) // 2)
         self.gap11 = nn.AdaptiveAvgPool2d(1)
 
-        self.weight1 = nn.Parameter(torch.tensor(0.2))  # 对应于 y1 的权重
-        self.weight2 = nn.Parameter(torch.tensor(0.3))  # 对应于 y2 的权重
+        self.weight1 = nn.Parameter(torch.tensor(0.5))  # 对应于 y1 的权重
+        self.weight2 = nn.Parameter(torch.tensor(0.5))  # 对应于 y2 的权重
 
         # Batch Normalization
         self.bn1 = nn.BatchNorm2d(ch_in)
@@ -114,10 +114,8 @@ class ECAAttention1(nn.Module):
     # 输出只相加了
     def forward(self, x):
         b, c, _, _ = x.size()
-        y = self.gap(x)
-        y = y.squeeze(-1).permute(0, 2, 1)
-        y = self.conv1d(y)
-        y = y.permute(0, 2, 1).unsqueeze(-1)
+        y = self.gap(x).view(b, c)  # 在空间方向执行全局平均池化: (B,C,H,W)-->(B,C,1,1)
+        y = self.fc(y).view(b, c, 1, 1)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
 
         y1 = self.bn1(self.conv(x))
         y1 = self.gap1(y1).view(b, c, 1, 1)
@@ -180,13 +178,13 @@ class MF_25(nn.Module):  # stereo attention block
         # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
         # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
         #########end
-        # x_diff = x_right - x_left
-        # x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
-        # x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
-        # x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
-        # x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
-        x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
-        x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
+        x_diff = x_right - x_left
+        x_diffA = self.catconvA((torch.cat([x_diff, x_left], dim=1)))
+        x_diffB = self.catconvB((torch.cat([x_diff, x_right], dim=1)))
+        x_mask_left = torch.mul(self.mask_map_r(x_diffA).repeat(1, 3, 1, 1), x_left)
+        x_mask_right = torch.mul(self.mask_map_i(x_diffB), x_right)
+        # x_mask_left = torch.mul(self.mask_map_r(x_left), x_left)
+        # x_mask_right = torch.mul(self.mask_map_i(x_right), x_right)
 
         out_IR = self.bottleneck1(x_mask_right + x_right_ori)
         out_RGB = self.bottleneck2(x_mask_left + x_left_ori)  # RGB
