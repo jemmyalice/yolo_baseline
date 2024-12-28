@@ -92,10 +92,6 @@ class ECAAttention1(nn.Module):
         self.weight1 = nn.Parameter(torch.tensor(0.5))  # 对应于 y1 的权重
         self.weight2 = nn.Parameter(torch.tensor(0.5))  # 对应于 y2 的权重
 
-        # Batch Normalization
-        self.bn1 = nn.BatchNorm2d(ch_in)
-        self.bn2 = nn.BatchNorm2d(ch_in)
-
         self.init_weights()
 
     def init_weights(self):
@@ -119,10 +115,10 @@ class ECAAttention1(nn.Module):
         y = self.conv1d(y)
         y = y.permute(0, 2, 1).unsqueeze(-1)
 
-        y1 = self.bn1(self.conv(x))
+        y1 = self.conv(x)
         y1 = self.gap1(y1).view(b, c, 1, 1)
 
-        y2 = self.bn2(self.conv1(x))
+        y2 = self.conv1(x)
         y2 = self.gap11(y2).view(b, c, 1, 1)
 
         y = y + y1 * self.weight1 + y2 * self.weight2
