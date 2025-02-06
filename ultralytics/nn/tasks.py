@@ -1168,7 +1168,7 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c1 = ch[-1]
             c2 = 6
             args = args
-        elif m in {My_concat, My_Concat_SE}:
+        elif m in {My_add}:
             c1 = ch[-1]
             c2 = 3
             args = args
