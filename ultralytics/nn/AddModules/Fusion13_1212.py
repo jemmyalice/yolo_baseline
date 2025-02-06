@@ -114,7 +114,8 @@ class ECAAttention1(nn.Module):
         y2 = self.conv1(x)  # 在通道维度上执行1D卷积操作,建模局部通道之间的相关性: (B,1,C)-->(B,1,C)
         y2 = self.gap11(y2).view(b, c, 1, 1)
 
-        y = y + y1 + y2
+        # y = y + y1 + y2
+        y = y + 0.15 * y1 + 0.85 * y2
         y = self.sigmoid(y)  # 生成权重表示: (B,1,C)
 
         return x * y.expand_as(x) # 权重对输入的通道进行重新加权: (B,C,H,W) * (B,C,1,1) = (B,C,H,W)

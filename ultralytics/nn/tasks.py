@@ -1164,6 +1164,14 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             c1 = ch[-1]
             c2 = 64
             args = args
+        elif m in {My_concat, My_Concat_SE}:
+            c1 = ch[-1]
+            c2 = 6
+            args = args
+        elif m in {My_concat, My_Concat_SE}:
+            c1 = ch[-1]
+            c2 = 3
+            args = args
         # elif m is SEAttention:
         #     c1 = c2 = args[0]
         #     if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
